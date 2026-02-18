@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FillSpace | Mid-Term Commercial Rentals</title>
+  <meta name="description" content="FillSpace connects vacant commercial spaces with plug-and-play businesses through flexible 1-6 month rentals.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.cdnfonts.com/css/airbnb-cereal-app" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="page-home">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="container nav-row">
+      <a class="brand" href="index.html" aria-label="FillSpace home">
+        <span class="brand-mark">F</span>
+        <span class="brand-text">FillSpace</span>
+      </a>
+
+      <button class="menu-toggle" aria-expanded="false" aria-controls="site-nav">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav id="site-nav" class="site-nav" aria-label="Main navigation">
+        <a class="active" href="index.html">Home</a>
+        <a href="about.html">About / How it Works</a>
+        <a href="browse.html">Browse Properties</a>
+      </nav>
+
+      <div class="nav-cta-group">
+        <button class="btn btn-secondary btn-small" data-open-info>Ask for info</button>
+        <a class="btn btn-primary btn-small" href="#lead-playbook">Lead playbook</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <section class="hero">
+      <div class="hero-bg-glow"></div>
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">The first marketplace for mid-term commercial rentals</p>
+          <h1>Turn vacancy into revenue. Help startups move in fast.</h1>
+          <p class="hero-subtitle">
+            FillSpace gives property owners and operators an Airbnb-style experience for 1-6 month
+            commercial rentals, with built-in legal, verification, and insurance workflows.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="browse.html">Start browsing</a>
+            <button class="btn btn-ghost" data-open-info>Request platform demo</button>
+          </div>
+          <div class="hero-metrics">
+            <article>
+              <h3>6+ Months</h3>
+              <p>Average time owners wait to fill vacant space</p>
+            </article>
+            <article>
+              <h3>$51K</h3>
+              <p>Average revenue loss per vacancy cycle</p>
+            </article>
+            <article>
+              <h3>67%</h3>
+              <p>Small businesses blocked by long-term leases</p>
+            </article>
+          </div>
+        </div>
+
+        <aside class="search-card">
+          <h2>Find your next space</h2>
+          <p>Search by location, size, budget, and move-in timeline.</p>
+          <form class="search-panel" action="browse.html" method="get">
+            <label for="location">Location</label>
+            <input id="location" name="location" type="text" placeholder="Boston, MA">
+
+            <label for="space-type">Space type</label>
+            <select id="space-type" name="type">
+              <option value="">Any</option>
+              <option value="retail">Retail storefront</option>
+              <option value="office">Creative office</option>
+              <option value="warehouse">Light industrial</option>
+              <option value="showroom">Showroom</option>
+            </select>
+
+            <label for="budget">Monthly budget</label>
+            <select id="budget" name="budget">
+              <option value="">Any budget</option>
+              <option value="3000">Up to $3,000</option>
+              <option value="5000">Up to $5,000</option>
+              <option value="8000">Up to $8,000</option>
+              <option value="12000">Up to $12,000</option>
+            </select>
+
+            <label for="timeline">Move-in timeline</label>
+            <select id="timeline" name="timeline">
+              <option value="">Flexible</option>
+              <option value="30">Within 30 days</option>
+              <option value="60">Within 60 days</option>
+              <option value="90">Within 90 days</option>
+            </select>
+
+            <button class="btn btn-primary btn-block" type="submit">Search spaces</button>
+          </form>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section surface">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Featured opportunities</p>
+          <h2>Spaces ready for immediate occupancy</h2>
+          <a href="browse.html" class="inline-link">View all listings</a>
+        </div>
+
+        <div class="property-grid compact-grid">
+          <article class="property-card">
+            <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80" alt="Downtown storefront with glass frontage">
+            <div class="property-content">
+              <div class="property-top">
+                <h3>Seaport Retail Corner</h3>
+                <span>Boston, MA</span>
+              </div>
+              <p>1,900 sq ft · High-foot-traffic retail corridor · Flexible merchandising fixtures included.</p>
+              <div class="property-meta">
+                <span>$6,200/mo</span>
+                <span>1-4 months</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="property-card">
+            <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=900&q=80" alt="Modern furnished office workspace">
+            <div class="property-content">
+              <div class="property-top">
+                <h3>Kendall Growth Studio</h3>
+                <span>Cambridge, MA</span>
+              </div>
+              <p>2,300 sq ft · Furnished, plug-and-play, conference-ready space for scaling teams.</p>
+              <div class="property-meta">
+                <span>$8,100/mo</span>
+                <span>2-6 months</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="property-card">
+            <img src="https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=900&q=80" alt="Pop-up showroom with large windows">
+            <div class="property-content">
+              <div class="property-top">
+                <h3>Back Bay Pop-up Loft</h3>
+                <span>Boston, MA</span>
+              </div>
+              <p>1,250 sq ft · Boutique-ready interior · Great for DTC launches and seasonal campaigns.</p>
+              <div class="property-meta">
+                <span>$4,850/mo</span>
+                <span>1-3 months</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="lead-playbook" class="section">
+      <div class="container">
+        <div class="section-heading">
+          <p class="eyebrow">Lead generation built for startups</p>
+          <h2>What high-growth startups do to win qualified leads</h2>
+        </div>
+
+        <div class="playbook-grid">
+          <article>
+            <h3>Audience-first content</h3>
+            <p>Publish practical guides, use-cases, and mini case studies that answer real buyer questions.</p>
+          </article>
+          <article>
+            <h3>Founder-led social</h3>
+            <p>Use LinkedIn and short-form video to build trust with operators and decision-makers.</p>
+          </article>
+          <article>
+            <h3>Lifecycle email flows</h3>
+            <p>Automate welcome, nurture, and reactivation journeys tied to behavior and booking intent.</p>
+          </article>
+          <article>
+            <h3>Paid + organic synergy</h3>
+            <p>Run test ads while compounding SEO through location pages and category-specific landing pages.</p>
+          </article>
+          <article>
+            <h3>Partnership loops</h3>
+            <p>Co-market with brokers, insurance providers, and startup communities to lower CAC.</p>
+          </article>
+          <article>
+            <h3>Conversion infrastructure</h3>
+            <p>Use clear CTAs, lightweight forms, social proof, and fast follow-up to convert intent into pipeline.</p>
+          </article>
+        </div>
+
+        <div class="lead-capture">
+          <div>
+            <h3>Get FillSpace's startup lead playbook</h3>
+            <p>Get a concise playbook with the exact channels, campaigns, and funnel metrics we recommend.</p>
+          </div>
+          <form class="inline-form" data-lead-form>
+            <label class="sr-only" for="playbook-email">Email address</label>
+            <input id="playbook-email" name="email" type="email" placeholder="work@email.com" required>
+            <button class="btn btn-primary" type="submit">Send me the guide</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="section split-section">
+      <div class="container split-grid">
+        <article class="split-card">
+          <p class="eyebrow">For property owners</p>
+          <h2>Stop waiting for long-term leases</h2>
+          <p>
+            Fill vacant units in weeks, not quarters. Keep control with owner approvals, automated credit checks,
+            and no-major-buildout terms.
+          </p>
+          <ul>
+            <li>List spaces in minutes</li>
+            <li>Tenant verification in under 48 hours</li>
+            <li>Embedded insurance and payment protection</li>
+          </ul>
+          <button class="btn btn-secondary" data-open-info>Get owner onboarding info</button>
+        </article>
+
+        <article class="split-card">
+          <p class="eyebrow">For startups and operators</p>
+          <h2>Get in, test, and scale confidently</h2>
+          <p>
+            Bridge the gap between expensive 24-hour rentals and rigid 3+ year leases with predictable mid-term terms.
+          </p>
+          <ul>
+            <li>1-6 month commitment windows</li>
+            <li>Move-in ready spaces with amenities</li>
+            <li>30-day rolling notice after initial term</li>
+          </ul>
+          <a class="btn btn-primary" href="browse.html">Browse spaces now</a>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <a class="brand footer-brand" href="index.html">
+          <span class="brand-mark">F</span>
+          <span class="brand-text">FillSpace</span>
+        </a>
+        <p>The Airbnb-style marketplace for flexible commercial rentals.</p>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="about.html">About / How it Works</a>
+        <a href="browse.html">Browse Properties</a>
+      </div>
+      <div>
+        <h4>Resources</h4>
+        <a href="#lead-playbook">Startup lead playbook</a>
+        <button class="text-link" data-open-info>Ask for more info</button>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <a href="mailto:hello@fillspace.com">hello@fillspace.com</a>
+        <a href="tel:+18005551234">(800) 555-1234</a>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <p>&copy; 2026 FillSpace, Inc. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <button class="floating-info-btn" data-open-info>Ask for info</button>
+
+  <div class="modal" id="info-modal" aria-hidden="true" role="dialog" aria-labelledby="info-title">
+    <div class="modal-backdrop" data-close-info></div>
+    <div class="modal-panel">
+      <button class="modal-close" aria-label="Close modal" data-close-info>&times;</button>
+      <p class="eyebrow">Get tailored guidance</p>
+      <h2 id="info-title">Tell us what you're building</h2>
+      <p>Share your timeline and goals. Our team will reply with options, pricing ranges, and lead recommendations.</p>
+      <form class="modal-form" data-lead-form>
+        <label for="name">Name</label>
+        <input id="name" name="name" type="text" required>
+
+        <label for="email">Work email</label>
+        <input id="email" name="email" type="email" required>
+
+        <label for="goal">What do you need most right now?</label>
+        <select id="goal" name="goal" required>
+          <option value="">Select one</option>
+          <option value="tenant">Help finding a space</option>
+          <option value="owner">Help listing a space</option>
+          <option value="growth">Lead-gen strategy for our startup</option>
+        </select>
+
+        <label for="message">Message</label>
+        <textarea id="message" name="message" rows="4" placeholder="Share your preferred location, budget, or growth goals."></textarea>
+
+        <button class="btn btn-primary btn-block" type="submit">Request information</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="form-toast" role="status" aria-live="polite">
+    Thanks! We'll follow up within 1 business day.
+  </div>
+
+  <script src="assets/js/main.js" defer></script>
+</body>
+</html>
