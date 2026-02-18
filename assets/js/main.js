@@ -1,17 +1,11 @@
 "use strict";
 
 (function initSite() {
-  const body = document.body;
   const nav = document.querySelector(".site-nav");
   const menuToggle = document.querySelector(".menu-toggle");
-  const infoModal = document.getElementById("info-modal");
   const propertyModal = document.getElementById("property-modal");
-  const modals = [infoModal, propertyModal].filter((node) => node instanceof HTMLElement);
-  const openInfoButtons = document.querySelectorAll("[data-open-info]");
-  const closeInfoButtons = document.querySelectorAll("[data-close-info]");
   const closePropertyButtons = document.querySelectorAll("[data-close-property]");
-  const contactForms = document.querySelectorAll("[data-contact-form]");
-  const toast = document.getElementById("form-toast");
+  const body = document.body;
 
   if (menuToggle && nav) {
     menuToggle.addEventListener("click", () => {
@@ -36,24 +30,13 @@
     });
   }
 
-  const syncBodyScrollLock = () => {
-    const hasOpenModal = modals.some((modalNode) => modalNode.classList.contains("is-open"));
-    body.style.overflow = hasOpenModal ? "hidden" : "";
-  };
-
   const openModal = (modalNode) => {
     if (!(modalNode instanceof HTMLElement)) {
       return;
     }
-    modals.forEach((node) => {
-      if (node !== modalNode) {
-        node.classList.remove("is-open");
-        node.setAttribute("aria-hidden", "true");
-      }
-    });
     modalNode.classList.add("is-open");
     modalNode.setAttribute("aria-hidden", "false");
-    syncBodyScrollLock();
+    body.style.overflow = "hidden";
     const focusTarget = modalNode.querySelector("input, select, textarea, button");
     if (focusTarget instanceof HTMLElement) {
       focusTarget.focus();
@@ -66,36 +49,12 @@
     }
     modalNode.classList.remove("is-open");
     modalNode.setAttribute("aria-hidden", "true");
-    syncBodyScrollLock();
-  };
-
-  const closeAllModals = () => {
-    modals.forEach((modalNode) => {
-      modalNode.classList.remove("is-open");
-      modalNode.setAttribute("aria-hidden", "true");
-    });
-    syncBodyScrollLock();
-  };
-
-  const openInfoModal = () => {
-    openModal(infoModal);
-  };
-
-  const closeInfoModal = () => {
-    closeModal(infoModal);
+    body.style.overflow = "";
   };
 
   const closePropertyModal = () => {
     closeModal(propertyModal);
   };
-
-  openInfoButtons.forEach((button) => {
-    button.addEventListener("click", openInfoModal);
-  });
-
-  closeInfoButtons.forEach((button) => {
-    button.addEventListener("click", closeInfoModal);
-  });
 
   closePropertyButtons.forEach((button) => {
     button.addEventListener("click", closePropertyModal);
@@ -107,42 +66,15 @@
     }
     if (propertyModal instanceof HTMLElement && propertyModal.classList.contains("is-open")) {
       closePropertyModal();
-      return;
     }
-    closeInfoModal();
-  });
-
-  const showToast = (message) => {
-    if (!toast) {
-      return;
-    }
-    if (message) {
-      toast.textContent = message;
-    }
-    toast.classList.add("show");
-    window.setTimeout(() => {
-      toast.classList.remove("show");
-    }, 2400);
-  };
-
-  contactForms.forEach((form) => {
-    form.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const formData = new FormData(form);
-      const name = String(formData.get("name") || "").trim();
-      const customMessage = name ? `Thanks ${name}! We'll follow up within 1 business day.` : "";
-      form.reset();
-      showToast(customMessage || "Thanks! We'll follow up within 1 business day.");
-      closeAllModals();
-    });
   });
 
   initBrowseFilters();
   initBrowsePropertyDetails({
     openModal,
     closeModal,
-    openInfoModal,
   });
+  initAskInfoFormPrefill();
   initScrollReveal();
 })();
 
@@ -315,7 +247,7 @@ function initBrowsePropertyDetails(modalApi) {
   const buildoutNode = document.getElementById("property-modal-buildout");
   const highlightsNode = document.getElementById("property-modal-highlights");
   const imageNode = document.getElementById("property-modal-image");
-  const propertyContactButton = document.querySelector("[data-property-contact]");
+  const propertyContactLink = document.getElementById("property-contact-link");
 
   const openDetails = (card) => {
     const propertyId = String(card.dataset.propertyId || "");
@@ -345,6 +277,15 @@ function initBrowsePropertyDetails(modalApi) {
       imageNode.alt = details.imageAlt || (fallbackImage instanceof HTMLImageElement ? fallbackImage.alt : "Property image");
     }
 
+    if (propertyContactLink instanceof HTMLAnchorElement) {
+      const params = new URLSearchParams({
+        property: details.title,
+        location: details.location,
+        source: "property-modal",
+      });
+      propertyContactLink.href = `ask-info.html?${params.toString()}`;
+    }
+
     modalApi.openModal(propertyModal);
   };
 
@@ -370,10 +311,9 @@ function initBrowsePropertyDetails(modalApi) {
     }
   });
 
-  if (propertyContactButton instanceof HTMLElement) {
-    propertyContactButton.addEventListener("click", () => {
+  if (propertyContactLink instanceof HTMLAnchorElement) {
+    propertyContactLink.addEventListener("click", () => {
       modalApi.closeModal(propertyModal);
-      modalApi.openInfoModal();
     });
   }
 }
@@ -455,6 +395,65 @@ function initScrollReveal() {
   );
 
   elements.forEach((element) => observer.observe(element));
+}
+
+function initAskInfoFormPrefill() {
+  const form = document.getElementById("ask-info-form");
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const property = String(params.get("property") || "").trim();
+  const location = String(params.get("location") || "").trim();
+  const source = String(params.get("source") || "website").trim();
+  const goal = String(params.get("goal") || "").trim();
+
+  const propertyField = document.getElementById("ask-property-context");
+  const locationField = document.getElementById("ask-location-context");
+  const sourceField = document.getElementById("ask-source");
+  const goalField = document.getElementById("ask-goal");
+  const subjectField = document.getElementById("ask-subject");
+  const contextBadge = document.getElementById("ask-context-badge");
+  const propertyGroup = document.getElementById("ask-property-group");
+  const locationGroup = document.getElementById("ask-location-group");
+
+  if (sourceField instanceof HTMLInputElement) {
+    sourceField.value = source || "website";
+  }
+
+  if (propertyField instanceof HTMLInputElement) {
+    propertyField.value = property;
+  }
+
+  if (locationField instanceof HTMLInputElement) {
+    locationField.value = location;
+  }
+
+  if (propertyGroup instanceof HTMLElement && !property) {
+    propertyGroup.classList.add("is-hidden");
+  }
+
+  if (locationGroup instanceof HTMLElement && !location) {
+    locationGroup.classList.add("is-hidden");
+  }
+
+  if (goalField instanceof HTMLSelectElement && goal) {
+    const matchedOption = Array.from(goalField.options).find((option) => option.value === goal);
+    if (matchedOption) {
+      goalField.value = goal;
+    }
+  }
+
+  if (subjectField instanceof HTMLInputElement && property) {
+    subjectField.value = `New FillSpace inquiry for ${property}`;
+  }
+
+  if (contextBadge instanceof HTMLElement && property) {
+    contextBadge.textContent = location ? `${property} • ${location}` : property;
+  } else if (contextBadge instanceof HTMLElement) {
+    contextBadge.textContent = "General inquiry";
+  }
 }
 
 const PROPERTY_DETAILS = {

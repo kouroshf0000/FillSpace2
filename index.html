@@ -33,7 +33,7 @@
       </nav>
 
       <div class="nav-cta-group">
-        <button class="btn btn-secondary btn-small" data-open-info>Ask for info</button>
+        <a class="btn btn-secondary btn-small" href="ask-info.html">Ask for info</a>
       </div>
     </div>
   </header>
@@ -234,7 +234,7 @@
             <li>Tenant verification in under 48 hours</li>
             <li>Embedded insurance and payment protection</li>
           </ul>
-          <button class="btn btn-secondary" data-open-info>Get owner onboarding info</button>
+          <a class="btn btn-secondary" href="ask-info.html?goal=owner">Get owner onboarding info</a>
         </article>
 
         <article class="split-card">
@@ -271,7 +271,7 @@
       <div>
         <h4>Resources</h4>
         <a href="#about-fillspace">About FillSpace</a>
-        <button class="text-link" data-open-info>Ask for more info</button>
+        <a class="text-link" href="ask-info.html">Ask for more info</a>
       </div>
       <div>
         <h4>Contact</h4>
@@ -284,41 +284,7 @@
     </div>
   </footer>
 
-  <button class="floating-info-btn" data-open-info>Ask for info</button>
-
-  <div class="modal" id="info-modal" aria-hidden="true" role="dialog" aria-labelledby="info-title">
-    <div class="modal-backdrop" data-close-info></div>
-    <div class="modal-panel">
-      <button class="modal-close" aria-label="Close modal" data-close-info>&times;</button>
-      <p class="eyebrow">Get tailored guidance</p>
-      <h2 id="info-title">Tell us what you need</h2>
-      <p>Share your goals and timeline. We'll follow up with next steps within one business day.</p>
-      <form class="modal-form" data-contact-form>
-        <label for="name">Name</label>
-        <input id="name" name="name" type="text" required>
-
-        <label for="email">Work email</label>
-        <input id="email" name="email" type="email" required>
-
-        <label for="goal">What do you need most right now?</label>
-        <select id="goal" name="goal" required>
-          <option value="">Select one</option>
-          <option value="tenant">Help finding a space</option>
-          <option value="owner">Help listing a space</option>
-          <option value="partnership">Partnership inquiry</option>
-        </select>
-
-        <label for="message">Message</label>
-        <textarea id="message" name="message" rows="4" placeholder="Share your location, timeline, and space needs."></textarea>
-
-        <button class="btn btn-primary btn-block" type="submit">Request information</button>
-      </form>
-    </div>
-  </div>
-
-  <div class="toast" id="form-toast" role="status" aria-live="polite">
-    Thanks! We'll follow up within 1 business day.
-  </div>
+  <a class="floating-info-btn" href="ask-info.html">Ask for info</a>
 
   <script src="assets/js/main.js" defer></script>
 </body>

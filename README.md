@@ -7,6 +7,7 @@ A sleek, multi-page MVP website for FillSpace inspired by marketplace UX pattern
 - `index.html` - Home
 - `about.html` - About / How it Works
 - `browse.html` - Browse Properties
+- `ask-info.html` - Contact / inquiry form
 
 ## Quick start (important)
 
@@ -28,5 +29,6 @@ http://localhost:4173
 
 - Font stack includes Airbnb Cereal (`Airbnb Cereal App`) with system fallbacks.
 - Brand palette is matched to the deck PDF and centralized in `assets/css/style.css`.
-- Contact CTAs are included in header, footer, floating action button, and modal forms.
+- Contact CTAs route users to `ask-info.html`.
+- Inquiry submissions post to `https://formsubmit.co/hello@fillspace.com`.
 
