@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tenant Dashboard | FillSpace</title>
+  <meta name="description" content="Tenant dashboard for reservations, watchlists, and finance details.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.cdnfonts.com/css/airbnb-cereal-app" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="page-dashboard page-tenant-dashboard">
+  <header class="site-header">
+    <div class="container nav-row">
+      <a class="brand" href="index.html" aria-label="FillSpace home">
+        <span class="brand-mark">F</span>
+        <span class="brand-text">FillSpace</span>
+      </a>
+      <nav class="site-nav" aria-label="Dashboard quick links">
+        <a href="browse.html">Browse</a>
+        <a href="ask-info.html">Support</a>
+      </nav>
+      <div class="nav-cta-group">
+        <button class="btn btn-secondary btn-small" id="tenant-logout-btn" type="button">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="section dashboard-section">
+    <div class="container dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <p class="eyebrow">Tenant dashboard</p>
+        <h2 id="tenant-name">Loading...</h2>
+        <p id="tenant-company" class="dashboard-subtext"></p>
+        <nav class="dashboard-nav" aria-label="Tenant dashboard sections">
+          <button type="button" data-dash-target="tenant-overview" class="active">Overview</button>
+          <button type="button" data-dash-target="tenant-reservations">Reservations</button>
+          <button type="button" data-dash-target="tenant-history">History</button>
+          <button type="button" data-dash-target="tenant-favorites">Watchlist</button>
+          <button type="button" data-dash-target="tenant-finance">Finance & Tax</button>
+          <button type="button" data-dash-target="tenant-booking">Book with Stripe</button>
+        </nav>
+      </aside>
+
+      <section class="dashboard-content">
+        <article id="tenant-overview" class="dashboard-panel active">
+          <div class="panel-header">
+            <h3>Overview</h3>
+            <p>Your current reservations and watchlist activity.</p>
+          </div>
+          <div class="metrics-grid">
+            <article><h4>Upcoming reservations</h4><p id="tenant-metric-upcoming">0</p></article>
+            <article><h4>Reservation history</h4><p id="tenant-metric-history">0</p></article>
+            <article><h4>Saved properties</h4><p id="tenant-metric-favorites">0</p></article>
+            <article><h4>Confirmed spend</h4><p id="tenant-metric-spend">$0.00</p></article>
+          </div>
+        </article>
+
+        <article id="tenant-reservations" class="dashboard-panel">
+          <div class="panel-header">
+            <h3>Upcoming reservations</h3>
+            <p>Current and pending bookings.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="dashboard-table" id="tenant-upcoming-table">
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th>Dates</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article id="tenant-history" class="dashboard-panel">
+          <div class="panel-header">
+            <h3>Reservation history</h3>
+            <p>Past stays and booking outcomes.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="dashboard-table" id="tenant-history-table">
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th>Dates</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article id="tenant-favorites" class="dashboard-panel">
+          <div class="panel-header">
+            <h3>Watchlist / favorites</h3>
+            <p>Saved properties for future booking decisions.</p>
+          </div>
+          <div id="tenant-favorites-grid" class="property-grid compact-grid"></div>
+        </article>
+
+        <article id="tenant-finance" class="dashboard-panel">
+          <div class="panel-header">
+            <h3>Finance & Tax</h3>
+            <p>Transaction data and reporting-friendly summaries.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="dashboard-table" id="tenant-finance-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Property</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                  <th>Platform fee</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article id="tenant-booking" class="dashboard-panel">
+          <div class="panel-header">
+            <h3>Book with Stripe</h3>
+            <p>Create checkout sessions where FillSpace keeps 12% and the owner receives payout automatically.</p>
+          </div>
+          <form id="tenant-booking-form" class="dashboard-form">
+            <label for="booking-property">Property</label>
+            <select id="booking-property" name="propertyId" required></select>
+
+            <div class="form-grid two-col">
+              <div>
+                <label for="booking-start">Start date</label>
+                <input id="booking-start" name="startDate" type="date" required>
+              </div>
+              <div>
+                <label for="booking-end">End date</label>
+                <input id="booking-end" name="endDate" type="date" required>
+              </div>
+            </div>
+
+            <div class="quote-card">
+              <p id="booking-quote-text">Select dates to preview pricing.</p>
+            </div>
+
+            <button class="btn btn-primary" type="submit">Proceed to Stripe checkout</button>
+            <p id="tenant-booking-message" class="dashboard-message" role="status" aria-live="polite"></p>
+          </form>
+
+          <div class="panel-header top-space">
+            <h3>Browse and add to watchlist</h3>
+          </div>
+          <div id="tenant-browse-grid" class="property-grid compact-grid"></div>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <script src="assets/js/tenant-dashboard.js" defer></script>
+</body>
+</html>

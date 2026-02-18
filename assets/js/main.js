@@ -1,6 +1,6 @@
 "use strict";
 
-(function initSite() {
+(async function initSite() {
   const nav = document.querySelector(".site-nav");
   const menuToggle = document.querySelector(".menu-toggle");
   const propertyModal = document.getElementById("property-modal");
@@ -69,6 +69,7 @@
     }
   });
 
+  await hydrateBrowseListingsFromApi();
   initBrowseFilters();
   initBrowsePropertyDetails({
     openModal,
@@ -77,6 +78,120 @@
   initAskInfoFormPrefill();
   initScrollReveal();
 })();
+
+const runtimePropertyDetails = Object.create(null);
+
+async function hydrateBrowseListingsFromApi() {
+  const listingGrid = document.getElementById("listing-grid");
+  if (!(listingGrid instanceof HTMLElement)) {
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/properties");
+    if (!res.ok) {
+      return;
+    }
+    const payload = await res.json();
+    const properties = Array.isArray(payload.properties) ? payload.properties : [];
+    if (!properties.length) {
+      return;
+    }
+
+    listingGrid.innerHTML = "";
+    for (const property of properties) {
+      const card = createBrowseCardFromApi(property);
+      listingGrid.appendChild(card);
+      runtimePropertyDetails[property.slug] = {
+        title: property.title,
+        location: property.location,
+        size: `${property.size_sqft} sq ft`,
+        price: `$${Number(property.monthly_price || 0).toLocaleString("en-US", {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        })}/mo`,
+        term: `${property.min_term_months}-${property.max_term_months} months`,
+        availability: property.availability_text || "Available now",
+        bestFor: property.best_for || "Flexible commercial occupancy",
+        utilities: property.utilities || "Utilities vary by listing",
+        buildout: property.buildout || "Light cosmetic changes only",
+        description: property.description || "",
+        highlights: Array.isArray(property.amenities) && property.amenities.length
+          ? property.amenities.map((amenity) => `${amenity} included`)
+          : ["Verified businesses", "Streamlined approvals", "Insurance-ready workflow"],
+        image: property.image_url || "",
+        imageAlt: property.title || "Property image",
+      };
+    }
+  } catch {
+    // Keep static fallback cards when API is unavailable.
+  }
+}
+
+function createBrowseCardFromApi(property) {
+  const card = document.createElement("article");
+  const amenities = Array.isArray(property.amenities) ? property.amenities : [];
+  const amenityTags = amenities.slice(0, 2);
+  const amenityDataset = amenities.map((amenity) => toAmenitySlug(amenity)).join(",");
+  const locationForFilter = String(property.city || property.location || "any").split(",")[0].trim();
+  const description =
+    property.description && property.description.length > 130
+      ? `${property.description.slice(0, 127)}...`
+      : property.description || "Flexible listing for short-term commercial occupancy.";
+
+  card.className = "property-card";
+  card.dataset.propertyId = property.slug || `property-${property.id}`;
+  card.dataset.location = locationForFilter || "any";
+  card.dataset.size = String(property.size_sqft || 0);
+  card.dataset.price = String(Math.round(Number(property.monthly_price || 0)));
+  card.dataset.amenities = amenityDataset;
+
+  card.innerHTML = `
+    <img src="${escapeAttribute(property.image_url || "")}" alt="${escapeAttribute(property.title || "Property image")}">
+    <div class="property-content">
+      <div class="property-top">
+        <h3>${escapeHtml(property.title || "")}</h3>
+        <span>${escapeHtml(property.location || "")}</span>
+      </div>
+      <p>${escapeHtml(description)}</p>
+      <div class="tag-row">
+        ${amenityTags.map((amenity) => `<span>${escapeHtml(amenity)}</span>`).join("")}
+      </div>
+      <div class="property-meta">
+        <span>$${Number(property.monthly_price || 0).toLocaleString("en-US")}/mo</span>
+        <span>${property.min_term_months}-${property.max_term_months} months</span>
+      </div>
+      <div class="property-actions">
+        <button class="property-open-btn" type="button" data-open-property>View details</button>
+      </div>
+    </div>
+  `;
+
+  return card;
+}
+
+function toAmenitySlug(value) {
+  const normalized = String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (normalized.includes("loading")) {
+    return "loading";
+  }
+  if (normalized.includes("furnished")) {
+    return "furnished";
+  }
+  if (normalized.includes("foot")) {
+    return "foot-traffic";
+  }
+  if (normalized.includes("parking")) {
+    return "parking";
+  }
+  if (normalized.includes("conference")) {
+    return "conference";
+  }
+  return normalized || "any";
+}
 
 function initBrowseFilters() {
   const listingGrid = document.getElementById("listing-grid");
@@ -251,7 +366,7 @@ function initBrowsePropertyDetails(modalApi) {
 
   const openDetails = (card) => {
     const propertyId = String(card.dataset.propertyId || "");
-    const details = PROPERTY_DETAILS[propertyId] || createFallbackDetails(card);
+    const details = runtimePropertyDetails[propertyId] || PROPERTY_DETAILS[propertyId] || createFallbackDetails(card);
     const fallbackImage = card.querySelector("img");
 
     setText(locationNode, details.location);
@@ -454,6 +569,19 @@ function initAskInfoFormPrefill() {
   } else if (contextBadge instanceof HTMLElement) {
     contextBadge.textContent = "General inquiry";
   }
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replaceAll("`", "&#96;");
 }
 
 const PROPERTY_DETAILS = {

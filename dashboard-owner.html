@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Owner Dashboard | FillSpace</title>
+  <meta name="description" content="Owner dashboard for property management, analytics, and marketplace finance.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.cdnfonts.com/css/airbnb-cereal-app" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="page-dashboard page-owner-dashboard">
+  <header class="site-header">
+    <div class="container nav-row">
+      <a class="brand" href="index.html" aria-label="FillSpace home">
+        <span class="brand-mark">F</span>
+        <span class="brand-text">FillSpace</span>
+      </a>
+      <nav class="site-nav" aria-label="Dashboard quick links">
+        <a href="browse.html">Browse</a>
+        <a href="ask-info.html">Support</a>
+      </nav>
+      <div class="nav-cta-group">
+        <button class="btn btn-secondary btn-small" id="owner-logout-btn" type="button">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="section dashboard-section">
+    <div class="container dashboard-shell">
+      <aside class="dashboard-sidebar">
+        <p class="eyebrow">Owner dashboard</p>
+        <h2 id="owner-name">Loading...</h2>
+        <p id="owner-company" class="dashboard-subtext"></p>
+        <nav class="dashboard-nav" aria-label="Owner dashboard sections">
+          <button type="button" data-dash-target="owner-overview" class="active">Overview</button>
+          <button type="button" data-dash-target="owner-properties">Properties</button>
+          <button type="button" data-dash-target="owner-analytics">Analytics</button>
+          <button type="button" data-dash-target="owner-finance">Finance</button>
+          <button type="button" data-dash-target="owner-legal">Tax & Legal</button>
+        </nav>
+      </aside>
+
+      <section class="dashboard-content">
+        <article id="owner-overview" class="dashboard-panel active">
+          <div class="panel-header">
+            <h3>Overview</h3>
+            <div class="inline-actions">
+              <span id="owner-stripe-status" class="context-chip">Stripe not connected</span>
+              <button class="btn btn-primary btn-small" id="connect-stripe-btn" type="button">Connect Stripe</button>
+            </div>
+          </div>
+          <div class="metrics-grid">
+            <article><h4>Total properties</h4><p id="metric-total-properties">0</p></article>
+            <article><h4>Active listings</h4><p id="metric-active-properties">0</p></article>
+            <article><h4>Total reservations</h4><p id="metric-total-reservations">0</p></article>
+            <article><h4>Confirmed bookings</h4><p id="metric-confirmed-reservations">0</p></article>
+            <article><h4>Gross revenue</h4><p id="metric-gross-revenue">$0.00</p></article>
+            <article><h4>Owner payouts</h4><p id="metric-owner-payout">$0.00</p></article>
+          </div>
+        </article>
+
+        <article id="owner-properties" class="dashboard-panel">
+          <div class="panel-header">
+            <h3>Manage properties</h3>
+            <p>Your listings appear on the public browse page once active.</p>
+          </div>
+
+          <form id="owner-property-form" class="dashboard-form">
+            <div class="form-grid">
+              <div>
+                <label for="prop-title">Property title</label>
+                <input id="prop-title" name="title" type="text" required>
+              </div>
+              <div>
+                <label for="prop-location">Location</label>
+                <input id="prop-location" name="location" type="text" required>
+              </div>
+              <div>
+                <label for="prop-city">City</label>
+                <input id="prop-city" name="city" type="text">
+              </div>
+              <div>
+                <label for="prop-state">State</label>
+                <input id="prop-state" name="state" type="text" maxlength="20">
+              </div>
+              <div>
+                <label for="prop-size">Size (sq ft)</label>
+                <input id="prop-size" name="size_sqft" type="number" min="100" required>
+              </div>
+              <div>
+                <label for="prop-price">Monthly price (USD)</label>
+                <input id="prop-price" name="monthly_price" type="number" min="100" step="1" required>
+              </div>
+              <div>
+                <label for="prop-min-term">Min term (months)</label>
+                <input id="prop-min-term" name="min_term_months" type="number" min="1" max="24" required>
+              </div>
+              <div>
+                <label for="prop-max-term">Max term (months)</label>
+                <input id="prop-max-term" name="max_term_months" type="number" min="1" max="24" required>
+              </div>
+              <div>
+                <label for="prop-availability">Availability text</label>
+                <input id="prop-availability" name="availability_text" type="text" placeholder="Available now">
+              </div>
+              <div>
+                <label for="prop-image">Image URL</label>
+                <input id="prop-image" name="image_url" type="url" placeholder="https://...">
+              </div>
+              <div>
+                <label for="prop-best-for">Best for</label>
+                <input id="prop-best-for" name="best_for" type="text" placeholder="Pop-up retail, studio, office">
+              </div>
+              <div>
+                <label for="prop-status">Listing status</label>
+                <select id="prop-status" name="status">
+                  <option value="active">Active</option>
+                  <option value="draft">Draft</option>
+                  <option value="paused">Paused</option>
+                </select>
+              </div>
+            </div>
+            <label for="prop-amenities">Amenities (comma-separated)</label>
+            <input id="prop-amenities" name="amenities" type="text" placeholder="Furnished, Parking, Loading access">
+
+            <label for="prop-utilities">Utilities info</label>
+            <input id="prop-utilities" name="utilities" type="text" placeholder="Internet and HVAC included">
+
+            <label for="prop-buildout">Buildout policy</label>
+            <input id="prop-buildout" name="buildout" type="text" placeholder="No major structural changes">
+
+            <label for="prop-description">Description</label>
+            <textarea id="prop-description" name="description" rows="4" required></textarea>
+
+            <button class="btn btn-primary" type="submit">Add property</button>
+            <p id="owner-property-message" class="dashboard-message" role="status" aria-live="polite"></p>
+          </form>
+
+          <div class="table-wrap">
+            <table class="dashboard-table" id="owner-properties-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Status</th>
+                  <th>Price</th>
+                  <th>Term</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article id="owner-analytics" class="dashboard-panel">
+          <div class="panel-header">
+            <h3>Analytics</h3>
+            <p>Performance snapshot of listing conversion and booking revenue.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="dashboard-table" id="owner-analytics-table">
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th>Monthly price</th>
+                  <th>Reservations</th>
+                  <th>Revenue</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article id="owner-finance" class="dashboard-panel">
+          <div class="panel-header">
+            <h3>Finance</h3>
+            <p>Booking payouts, platform fees, and transaction history.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="dashboard-table" id="owner-finance-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Property</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                  <th>Platform fee</th>
+                  <th>Payout</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article id="owner-legal" class="dashboard-panel">
+          <div class="panel-header">
+            <h3>Tax & Legal</h3>
+            <p>Core compliance references for owner operations.</p>
+          </div>
+          <ul id="owner-legal-list" class="simple-list"></ul>
+        </article>
+      </section>
+    </div>
+  </main>
+
+  <script src="assets/js/owner-dashboard.js" defer></script>
+</body>
+</html>
