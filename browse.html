@@ -34,7 +34,6 @@
 
       <div class="nav-cta-group">
         <button class="btn btn-secondary btn-small" data-open-info>Ask for info</button>
-        <a class="btn btn-primary btn-small" href="#lead-help">Lead playbook</a>
       </div>
     </div>
   </header>
@@ -44,10 +43,9 @@
       <div class="hero-bg-glow"></div>
       <div class="container hero-single">
         <p class="eyebrow">Curated marketplace</p>
-        <h1>Browse spaces built for fast-moving businesses</h1>
+        <h1>Browse flexible commercial spaces</h1>
         <p class="hero-subtitle">
-          Filter by location, price, size, and amenities. Every listing supports mid-term flexibility with
-          streamlined approvals.
+          Filter by location, size, budget, and amenities. Mid-term terms are built into every listing.
         </p>
       </div>
     </section>
@@ -111,7 +109,7 @@
       <div class="container browse-layout">
         <div>
           <div class="results-row">
-            <h2 id="results-count">8 properties available</h2>
+            <h2 id="results-count">6 properties available</h2>
             <button class="btn btn-ghost btn-small" data-open-info>Need tailored options?</button>
           </div>
 
@@ -211,44 +209,6 @@
               </div>
             </article>
 
-            <article class="property-card" data-location="Cambridge" data-size="2700" data-price="9200" data-amenities="conference,furnished">
-              <img src="https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1000&q=80" alt="Large office floorplate with collaborative seating">
-              <div class="property-content">
-                <div class="property-top">
-                  <h3>Porter Team HQ</h3>
-                  <span>Cambridge, MA</span>
-                </div>
-                <p>2,700 sq ft full-floor office with premium meeting and collaboration zones.</p>
-                <div class="tag-row">
-                  <span>Conference</span>
-                  <span>Furnished</span>
-                </div>
-                <div class="property-meta">
-                  <span>$9,200/mo</span>
-                  <span>3-6 months</span>
-                </div>
-              </div>
-            </article>
-
-            <article class="property-card" data-location="Somerville" data-size="1550" data-price="4700" data-amenities="parking,furnished">
-              <img src="https://images.unsplash.com/photo-1460472178825-e5240623afd5?auto=format&fit=crop&w=1000&q=80" alt="Studio retail and office hybrid suite">
-              <div class="property-content">
-                <div class="property-top">
-                  <h3>Union Retail Studio</h3>
-                  <span>Somerville, MA</span>
-                </div>
-                <p>1,550 sq ft hybrid retail-office studio with flexible merchandising zones.</p>
-                <div class="tag-row">
-                  <span>Parking</span>
-                  <span>Furnished</span>
-                </div>
-                <div class="property-meta">
-                  <span>$4,700/mo</span>
-                  <span>1-4 months</span>
-                </div>
-              </div>
-            </article>
-
             <article class="property-card" data-location="Boston" data-size="1800" data-price="5900" data-amenities="conference,foot-traffic">
               <img src="https://images.unsplash.com/photo-1497215842964-222b430dc094?auto=format&fit=crop&w=1000&q=80" alt="Retail showroom with conference lounge">
               <div class="property-content">
@@ -272,16 +232,15 @@
 
         <aside>
           <div class="side-panel sticky-panel">
-            <p class="eyebrow">Need help shortlisting?</p>
-            <h3>Get a custom list in 24 hours</h3>
-            <p>Tell us your business type and launch timeline, and we'll send matching options with pricing bands.</p>
-            <form class="stacked-form" data-lead-form>
-              <label for="browse-email">Work email</label>
-              <input id="browse-email" name="email" type="email" placeholder="founder@company.com" required>
-              <label for="browse-needs">What are you launching?</label>
-              <textarea id="browse-needs" name="needs" rows="4" placeholder="Pop-up retail, test market office, brand activation, etc."></textarea>
-              <button class="btn btn-primary btn-block" type="submit">Request shortlist</button>
-            </form>
+            <p class="eyebrow">Booking basics</p>
+            <h3>Fast, protected occupancy</h3>
+            <ul class="simple-list">
+              <li>Owner review window: up to 48 hours</li>
+              <li>Credit and business verification included</li>
+              <li>Insurance built into platform workflows</li>
+              <li>30-day rolling notice after initial term</li>
+            </ul>
+            <button class="btn btn-primary btn-block" data-open-info>Ask for availability help</button>
           </div>
 
           <div class="side-panel map-panel">
@@ -292,22 +251,6 @@
             <p>Launching with curated inventory across Boston, Cambridge, and Somerville.</p>
           </div>
         </aside>
-      </div>
-    </section>
-
-    <section id="lead-help" class="section surface">
-      <div class="container">
-        <div class="lead-capture">
-          <div>
-            <h3>Want our startup lead-gen checklist?</h3>
-            <p>See the exact lead channels, KPI targets, and follow-up workflows modern marketplaces use.</p>
-          </div>
-          <form class="inline-form" data-lead-form>
-            <label class="sr-only" for="browse-playbook">Email address</label>
-            <input id="browse-playbook" name="email" type="email" placeholder="growth@startup.com" required>
-            <button class="btn btn-primary" type="submit">Send checklist</button>
-          </form>
-        </div>
       </div>
     </section>
   </main>
@@ -328,7 +271,7 @@
       </div>
       <div>
         <h4>Resources</h4>
-        <a href="#lead-help">Lead checklist</a>
+        <a href="about.html#market-model">Segments & model</a>
         <button class="text-link" data-open-info>Ask for more info</button>
       </div>
       <div>
@@ -351,7 +294,7 @@
       <p class="eyebrow">Get tailored guidance</p>
       <h2 id="info-title">Get recommendations from the FillSpace team</h2>
       <p>Share your space criteria and launch goals. We will follow up with curated options and next steps.</p>
-      <form class="modal-form" data-lead-form>
+      <form class="modal-form" data-contact-form>
         <label for="browse-name">Name</label>
         <input id="browse-name" name="name" type="text" required>
 
@@ -363,7 +306,7 @@
           <option value="">Select one</option>
           <option value="tenant">Finding startup space</option>
           <option value="owner">Listing commercial inventory</option>
-          <option value="leads">Lead-gen strategy support</option>
+          <option value="partner">Partnership inquiry</option>
         </select>
 
         <button class="btn btn-primary btn-block" type="submit">Request information</button>

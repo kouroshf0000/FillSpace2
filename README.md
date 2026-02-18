@@ -28,5 +28,5 @@ http://localhost:4173
 
 - Font stack includes Airbnb Cereal (`Airbnb Cereal App`) with system fallbacks.
 - Brand palette is matched to the deck PDF and centralized in `assets/css/style.css`.
-- Lead generation CTAs are included in header, footer, floating action button, and modal forms.
+- Contact CTAs are included in header, footer, floating action button, and modal forms.
 

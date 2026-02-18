@@ -7,7 +7,7 @@
   const modal = document.getElementById("info-modal");
   const openModalButtons = document.querySelectorAll("[data-open-info]");
   const closeModalButtons = document.querySelectorAll("[data-close-info]");
-  const leadForms = document.querySelectorAll("[data-lead-form]");
+  const contactForms = document.querySelectorAll("[data-contact-form]");
   const toast = document.getElementById("form-toast");
 
   if (menuToggle && nav) {
@@ -82,7 +82,7 @@
     }, 2400);
   };
 
-  leadForms.forEach((form) => {
+  contactForms.forEach((form) => {
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const formData = new FormData(form);
