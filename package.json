@@ -1,0 +1,25 @@
+{
+  "name": "workspace",
+  "version": "1.0.0",
+  "description": "FillSpace MVP marketing and marketplace site",
+  "main": "index.html",
+  "scripts": {
+    "dev": "http-server . -p 4173 -c-1",
+    "start": "http-server . -p 4173 -c-1",
+    "test": "echo \"No automated tests configured yet\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kouroshf0000/FillSpace2.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kouroshf0000/FillSpace2/issues"
+  },
+  "homepage": "https://github.com/kouroshf0000/FillSpace2#readme",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}
