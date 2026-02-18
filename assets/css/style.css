@@ -605,6 +605,10 @@ textarea:focus {
   position: relative;
 }
 
+.page-browse .property-card {
+  cursor: pointer;
+}
+
 .property-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 20px 42px rgba(0, 35, 56, 0.16);
@@ -653,6 +657,29 @@ textarea:focus {
 .property-meta span:last-child {
   color: var(--blue-accent);
   font-weight: 600;
+}
+
+.property-actions {
+  margin-top: 0.8rem;
+}
+
+.property-open-btn {
+  width: 100%;
+  min-height: 2.35rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(0, 74, 173, 0.22);
+  background: rgba(0, 74, 173, 0.08);
+  color: var(--blue-accent);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.property-open-btn:hover {
+  background: rgba(0, 74, 173, 0.14);
+  transform: translateY(-1px);
 }
 
 .tag-row {
@@ -848,6 +875,14 @@ textarea:focus {
   align-items: start;
 }
 
+.browse-layout aside {
+  display: grid;
+  gap: 1rem;
+  position: sticky;
+  top: 96px;
+  align-self: start;
+}
+
 .results-row {
   display: flex;
   align-items: center;
@@ -870,9 +905,7 @@ textarea:focus {
 }
 
 .sticky-panel {
-  position: sticky;
-  top: 96px;
-  margin-bottom: 1rem;
+  position: static;
 }
 
 .stacked-form {
@@ -1026,6 +1059,70 @@ textarea:focus {
   gap: 0.62rem;
 }
 
+.property-panel {
+  width: min(860px, calc(100% - 2rem));
+  padding: 1.15rem;
+}
+
+.property-modal-subtitle {
+  font-size: 0.95rem;
+  color: var(--blue-accent);
+  font-weight: 600;
+  margin-bottom: 0.95rem;
+}
+
+.property-modal-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.property-modal-layout img {
+  width: 100%;
+  min-height: 280px;
+  max-height: 420px;
+  object-fit: cover;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+}
+
+.property-spec-grid {
+  margin: 0.95rem 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.property-spec-grid article {
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  padding: 0.62rem 0.68rem;
+  background: var(--surface-alt);
+}
+
+.property-spec-grid span {
+  display: block;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+
+.property-spec-grid strong {
+  color: var(--ink-900);
+  font-size: 0.88rem;
+}
+
+.property-highlights {
+  margin: 0.65rem 0 1rem;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.4rem;
+  color: var(--ink-800);
+}
+
 .toast {
   position: fixed;
   left: 50%;
@@ -1061,6 +1158,33 @@ textarea:focus {
 
 .is-hidden {
   display: none !important;
+}
+
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(26px) scale(0.985);
+  filter: blur(2px);
+  transition:
+    opacity 0.64s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.64s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.64s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: opacity, transform, filter;
+}
+
+.reveal-on-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    transition: none;
+  }
 }
 
 @media (max-width: 1120px) {
@@ -1104,6 +1228,10 @@ textarea:focus {
 
   .browse-layout {
     grid-template-columns: 1fr;
+  }
+
+  .browse-layout aside {
+    position: static;
   }
 
   .sticky-panel {
@@ -1188,6 +1316,10 @@ textarea:focus {
     left: 0.8rem;
     bottom: 0.8rem;
   }
+
+  .property-modal-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 620px) {
@@ -1227,5 +1359,9 @@ textarea:focus {
 
   .visual-card {
     min-height: 190px;
+  }
+
+  .property-spec-grid {
+    grid-template-columns: 1fr;
   }
 }

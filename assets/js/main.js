@@ -4,9 +4,12 @@
   const body = document.body;
   const nav = document.querySelector(".site-nav");
   const menuToggle = document.querySelector(".menu-toggle");
-  const modal = document.getElementById("info-modal");
-  const openModalButtons = document.querySelectorAll("[data-open-info]");
-  const closeModalButtons = document.querySelectorAll("[data-close-info]");
+  const infoModal = document.getElementById("info-modal");
+  const propertyModal = document.getElementById("property-modal");
+  const modals = [infoModal, propertyModal].filter((node) => node instanceof HTMLElement);
+  const openInfoButtons = document.querySelectorAll("[data-open-info]");
+  const closeInfoButtons = document.querySelectorAll("[data-close-info]");
+  const closePropertyButtons = document.querySelectorAll("[data-close-property]");
   const contactForms = document.querySelectorAll("[data-contact-form]");
   const toast = document.getElementById("form-toast");
 
@@ -33,40 +36,80 @@
     });
   }
 
-  const openInfoModal = () => {
-    if (!modal) {
+  const syncBodyScrollLock = () => {
+    const hasOpenModal = modals.some((modalNode) => modalNode.classList.contains("is-open"));
+    body.style.overflow = hasOpenModal ? "hidden" : "";
+  };
+
+  const openModal = (modalNode) => {
+    if (!(modalNode instanceof HTMLElement)) {
       return;
     }
-    modal.classList.add("is-open");
-    modal.setAttribute("aria-hidden", "false");
-    body.style.overflow = "hidden";
-    const focusTarget = modal.querySelector("input, select, textarea, button");
+    modals.forEach((node) => {
+      if (node !== modalNode) {
+        node.classList.remove("is-open");
+        node.setAttribute("aria-hidden", "true");
+      }
+    });
+    modalNode.classList.add("is-open");
+    modalNode.setAttribute("aria-hidden", "false");
+    syncBodyScrollLock();
+    const focusTarget = modalNode.querySelector("input, select, textarea, button");
     if (focusTarget instanceof HTMLElement) {
       focusTarget.focus();
     }
   };
 
-  const closeInfoModal = () => {
-    if (!modal) {
+  const closeModal = (modalNode) => {
+    if (!(modalNode instanceof HTMLElement)) {
       return;
     }
-    modal.classList.remove("is-open");
-    modal.setAttribute("aria-hidden", "true");
-    body.style.overflow = "";
+    modalNode.classList.remove("is-open");
+    modalNode.setAttribute("aria-hidden", "true");
+    syncBodyScrollLock();
   };
 
-  openModalButtons.forEach((button) => {
+  const closeAllModals = () => {
+    modals.forEach((modalNode) => {
+      modalNode.classList.remove("is-open");
+      modalNode.setAttribute("aria-hidden", "true");
+    });
+    syncBodyScrollLock();
+  };
+
+  const openInfoModal = () => {
+    openModal(infoModal);
+  };
+
+  const closeInfoModal = () => {
+    closeModal(infoModal);
+  };
+
+  const closePropertyModal = () => {
+    closeModal(propertyModal);
+  };
+
+  openInfoButtons.forEach((button) => {
     button.addEventListener("click", openInfoModal);
   });
 
-  closeModalButtons.forEach((button) => {
+  closeInfoButtons.forEach((button) => {
     button.addEventListener("click", closeInfoModal);
   });
 
+  closePropertyButtons.forEach((button) => {
+    button.addEventListener("click", closePropertyModal);
+  });
+
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      closeInfoModal();
+    if (event.key !== "Escape") {
+      return;
     }
+    if (propertyModal instanceof HTMLElement && propertyModal.classList.contains("is-open")) {
+      closePropertyModal();
+      return;
+    }
+    closeInfoModal();
   });
 
   const showToast = (message) => {
@@ -90,11 +133,17 @@
       const customMessage = name ? `Thanks ${name}! We'll follow up within 1 business day.` : "";
       form.reset();
       showToast(customMessage || "Thanks! We'll follow up within 1 business day.");
-      closeInfoModal();
+      closeAllModals();
     });
   });
 
   initBrowseFilters();
+  initBrowsePropertyDetails({
+    openModal,
+    closeModal,
+    openInfoModal,
+  });
+  initScrollReveal();
 })();
 
 function initBrowseFilters() {
@@ -243,3 +292,296 @@ function applyFilters(cards, listingGrid, resultsCount) {
     resultsCount.textContent = `${total} propert${total === 1 ? "y" : "ies"} available`;
   }
 }
+
+function initBrowsePropertyDetails(modalApi) {
+  const listingGrid = document.getElementById("listing-grid");
+  const propertyModal = document.getElementById("property-modal");
+  if (!(listingGrid instanceof HTMLElement) || !(propertyModal instanceof HTMLElement)) {
+    return;
+  }
+
+  const cards = Array.from(listingGrid.querySelectorAll(".property-card"));
+  if (!cards.length) {
+    return;
+  }
+
+  const titleNode = document.getElementById("property-modal-title");
+  const locationNode = document.getElementById("property-modal-location");
+  const subtitleNode = document.getElementById("property-modal-subtitle");
+  const descriptionNode = document.getElementById("property-modal-description");
+  const availabilityNode = document.getElementById("property-modal-availability");
+  const bestForNode = document.getElementById("property-modal-best-for");
+  const utilitiesNode = document.getElementById("property-modal-utilities");
+  const buildoutNode = document.getElementById("property-modal-buildout");
+  const highlightsNode = document.getElementById("property-modal-highlights");
+  const imageNode = document.getElementById("property-modal-image");
+  const propertyContactButton = document.querySelector("[data-property-contact]");
+
+  const openDetails = (card) => {
+    const propertyId = String(card.dataset.propertyId || "");
+    const details = PROPERTY_DETAILS[propertyId] || createFallbackDetails(card);
+    const fallbackImage = card.querySelector("img");
+
+    setText(locationNode, details.location);
+    setText(titleNode, details.title);
+    setText(subtitleNode, `${details.size} | ${details.price} | ${details.term}`);
+    setText(descriptionNode, details.description);
+    setText(availabilityNode, details.availability);
+    setText(bestForNode, details.bestFor);
+    setText(utilitiesNode, details.utilities);
+    setText(buildoutNode, details.buildout);
+
+    if (highlightsNode instanceof HTMLElement) {
+      highlightsNode.innerHTML = "";
+      details.highlights.forEach((highlight) => {
+        const item = document.createElement("li");
+        item.textContent = highlight;
+        highlightsNode.appendChild(item);
+      });
+    }
+
+    if (imageNode instanceof HTMLImageElement) {
+      imageNode.src = details.image || (fallbackImage instanceof HTMLImageElement ? fallbackImage.src : "");
+      imageNode.alt = details.imageAlt || (fallbackImage instanceof HTMLImageElement ? fallbackImage.alt : "Property image");
+    }
+
+    modalApi.openModal(propertyModal);
+  };
+
+  cards.forEach((card) => {
+    card.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      if (target.closest("button, a, input, select, textarea, label")) {
+        return;
+      }
+      openDetails(card);
+    });
+
+    const detailsButton = card.querySelector("[data-open-property]");
+    if (detailsButton instanceof HTMLElement) {
+      detailsButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openDetails(card);
+      });
+    }
+  });
+
+  if (propertyContactButton instanceof HTMLElement) {
+    propertyContactButton.addEventListener("click", () => {
+      modalApi.closeModal(propertyModal);
+      modalApi.openInfoModal();
+    });
+  }
+}
+
+function setText(node, value) {
+  if (node instanceof HTMLElement) {
+    node.textContent = value;
+  }
+}
+
+function createFallbackDetails(card) {
+  const title = card.querySelector("h3");
+  const location = card.querySelector(".property-top span");
+  const metaValues = card.querySelectorAll(".property-meta span");
+  const image = card.querySelector("img");
+
+  return {
+    title: title instanceof HTMLElement ? title.textContent?.trim() || "Property details" : "Property details",
+    location: location instanceof HTMLElement ? location.textContent?.trim() || "Greater Boston" : "Greater Boston",
+    size: `${card.dataset.size || "N/A"} sq ft`,
+    price: metaValues[0]?.textContent?.trim() || "Contact for pricing",
+    term: metaValues[1]?.textContent?.trim() || "Flexible term",
+    availability: "Contact for availability",
+    bestFor: "Retail, office, and short-term pilots",
+    utilities: "Based on location and unit setup",
+    buildout: "Light cosmetic changes only",
+    description: "This space supports flexible occupancy with FillSpace's streamlined approval process.",
+    highlights: [
+      "Verified operator workflow",
+      "Insurance included in the process",
+      "Owner approval and structured terms",
+    ],
+    image: image instanceof HTMLImageElement ? image.src : "",
+    imageAlt: image instanceof HTMLImageElement ? image.alt : "Property image",
+  };
+}
+
+function initScrollReveal() {
+  const selectors = [
+    ".section-heading",
+    ".visual-card",
+    ".property-card",
+    ".split-card",
+    ".step-card",
+    ".side-panel",
+    ".facts-grid article",
+    ".model-grid article",
+  ];
+  const elements = Array.from(document.querySelectorAll(selectors.join(",")));
+  if (!elements.length) {
+    return;
+  }
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  elements.forEach((element, index) => {
+    element.classList.add("reveal-on-scroll");
+    element.style.setProperty("--reveal-delay", `${Math.min(index % 6, 5) * 55}ms`);
+  });
+
+  if (reducedMotion || !("IntersectionObserver" in window)) {
+    elements.forEach((element) => element.classList.add("is-visible"));
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) {
+          return;
+        }
+        entry.target.classList.add("is-visible");
+        observer.unobserve(entry.target);
+      });
+    },
+    {
+      threshold: 0.14,
+      rootMargin: "0px 0px -10% 0px",
+    }
+  );
+
+  elements.forEach((element) => observer.observe(element));
+}
+
+const PROPERTY_DETAILS = {
+  "seaport-retail-corner": {
+    title: "Seaport Retail Corner",
+    location: "Seaport District, Boston MA",
+    size: "1,900 sq ft",
+    price: "$6,200/mo",
+    term: "1-4 months",
+    availability: "Available within 2 weeks",
+    bestFor: "Retail pop-ups and consumer launches",
+    utilities: "HVAC, internet, and base power included",
+    buildout: "Light merchandising changes only",
+    description:
+      "Corner storefront in one of Boston's highest-traffic neighborhoods. Built for fast activations with minimal setup friction.",
+    highlights: [
+      "Street-facing glass frontage with premium visibility",
+      "Walkable to transit, offices, and hotel clusters",
+      "Owner approval workflow completed in up to 48 hours",
+      "Insurance and contract flow managed in-platform",
+    ],
+    image: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80",
+    imageAlt: "Retail corner with city-facing windows",
+  },
+  "kendall-growth-studio": {
+    title: "Kendall Growth Studio",
+    location: "Kendall Square, Cambridge MA",
+    size: "2,300 sq ft",
+    price: "$8,100/mo",
+    term: "2-6 months",
+    availability: "Available next month",
+    bestFor: "Venture-backed teams and pilot HQs",
+    utilities: "Fiber internet, utilities, and conference AV",
+    buildout: "No major structural modifications",
+    description:
+      "Plug-and-play workspace designed for operators that need speed. Includes furnished team zones and client-ready meeting rooms.",
+    highlights: [
+      "Turnkey office layout for immediate occupancy",
+      "Dedicated conference and collaboration spaces",
+      "Close to Red Line and Kendall innovation corridor",
+      "Supports short-term growth sprints without long lease lock-in",
+    ],
+    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80",
+    imageAlt: "Modern furnished office with collaboration areas",
+  },
+  "back-bay-pop-up-loft": {
+    title: "Back Bay Pop-up Loft",
+    location: "Back Bay, Boston MA",
+    size: "1,250 sq ft",
+    price: "$4,850/mo",
+    term: "1-3 months",
+    availability: "Available now",
+    bestFor: "Brand activations and DTC test launches",
+    utilities: "Standard utilities and display lighting package",
+    buildout: "Cosmetic staging and temporary fixtures allowed",
+    description:
+      "Loft-style unit with strong natural light and adaptable floor plan for product showcases, capsule drops, and seasonal pop-ups.",
+    highlights: [
+      "High-visibility location near premium shopping corridors",
+      "Open plan layout for flexible merchandising",
+      "Fast onboarding with verification and e-sign workflow",
+      "Clear move-out standards to protect owner value",
+    ],
+    image: "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=1200&q=80",
+    imageAlt: "Pop-up retail loft with wide windows and natural light",
+  },
+  "assembly-flex-unit": {
+    title: "Assembly Flex Unit",
+    location: "Assembly Row, Somerville MA",
+    size: "2,100 sq ft",
+    price: "$5,600/mo",
+    term: "2-5 months",
+    availability: "Available within 30 days",
+    bestFor: "Hybrid showroom and fulfillment operations",
+    utilities: "Power, loading access, and parking included",
+    buildout: "Light equipment installation only",
+    description:
+      "Balanced front-of-house and back-of-house format ideal for operators combining customer experience with light operational throughput.",
+    highlights: [
+      "Loading access for inventory turnover",
+      "Flexible layout with front display and back storage zones",
+      "Convenient access to transit and major road links",
+      "Structured terms built for pilot and expansion phases",
+    ],
+    image: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80",
+    imageAlt: "Flex commercial unit with industrial-modern interior",
+  },
+  "south-end-showcase": {
+    title: "South End Showcase",
+    location: "South End, Boston MA",
+    size: "950 sq ft",
+    price: "$3,400/mo",
+    term: "1-2 months",
+    availability: "Available now",
+    bestFor: "Boutique concepts and local market tests",
+    utilities: "Base utilities with optional internet upgrade",
+    buildout: "No major buildout permitted",
+    description:
+      "Compact street-level space tailored for focused campaigns and first-location experiments with manageable overhead.",
+    highlights: [
+      "Street frontage in a walkable neighborhood",
+      "Low-footprint option for early-stage concepts",
+      "Simple move-in requirements and clear operating terms",
+      "Great fit for seasonal launches and short pilots",
+    ],
+    image: "https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?auto=format&fit=crop&w=1200&q=80",
+    imageAlt: "Street-facing boutique storefront",
+  },
+  "financial-district-showroom": {
+    title: "Financial District Showroom",
+    location: "Financial District, Boston MA",
+    size: "1,800 sq ft",
+    price: "$5,900/mo",
+    term: "2-5 months",
+    availability: "Available within 3 weeks",
+    bestFor: "B2B demos, enterprise showcases, and events",
+    utilities: "Conference AV, utilities, and hosted internet",
+    buildout: "Presentation-ready layout with light staging updates",
+    description:
+      "Showroom-style space combining polished client-facing zones with flexible event setup for recurring demos and presentations.",
+    highlights: [
+      "Built-in meeting and presentation flow",
+      "Prime downtown address for customer-facing sessions",
+      "Supports recurring demos and short campaign programs",
+      "Owner-protected terms with platform-managed documentation",
+    ],
+    image: "https://images.unsplash.com/photo-1497215842964-222b430dc094?auto=format&fit=crop&w=1200&q=80",
+    imageAlt: "Downtown showroom space with presentation lounge",
+  },
+};

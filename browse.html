@@ -114,7 +114,7 @@
           </div>
 
           <div class="property-grid" id="listing-grid">
-            <article class="property-card" data-location="Boston" data-size="1900" data-price="6200" data-amenities="foot-traffic,furnished">
+            <article class="property-card" data-property-id="seaport-retail-corner" data-location="Boston" data-size="1900" data-price="6200" data-amenities="foot-traffic,furnished">
               <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1000&q=80" alt="Retail corner in Seaport">
               <div class="property-content">
                 <div class="property-top">
@@ -130,10 +130,13 @@
                   <span>$6,200/mo</span>
                   <span>1-4 months</span>
                 </div>
+                <div class="property-actions">
+                  <button class="property-open-btn" type="button" data-open-property>View details</button>
+                </div>
               </div>
             </article>
 
-            <article class="property-card" data-location="Cambridge" data-size="2300" data-price="8100" data-amenities="conference,furnished,parking">
+            <article class="property-card" data-property-id="kendall-growth-studio" data-location="Cambridge" data-size="2300" data-price="8100" data-amenities="conference,furnished,parking">
               <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1000&q=80" alt="Creative office interior in Cambridge">
               <div class="property-content">
                 <div class="property-top">
@@ -149,10 +152,13 @@
                   <span>$8,100/mo</span>
                   <span>2-6 months</span>
                 </div>
+                <div class="property-actions">
+                  <button class="property-open-btn" type="button" data-open-property>View details</button>
+                </div>
               </div>
             </article>
 
-            <article class="property-card" data-location="Boston" data-size="1250" data-price="4850" data-amenities="foot-traffic,loading">
+            <article class="property-card" data-property-id="back-bay-pop-up-loft" data-location="Boston" data-size="1250" data-price="4850" data-amenities="foot-traffic,loading">
               <img src="https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=1000&q=80" alt="Pop-up loft with natural light">
               <div class="property-content">
                 <div class="property-top">
@@ -168,10 +174,13 @@
                   <span>$4,850/mo</span>
                   <span>1-3 months</span>
                 </div>
+                <div class="property-actions">
+                  <button class="property-open-btn" type="button" data-open-property>View details</button>
+                </div>
               </div>
             </article>
 
-            <article class="property-card" data-location="Somerville" data-size="2100" data-price="5600" data-amenities="loading,parking">
+            <article class="property-card" data-property-id="assembly-flex-unit" data-location="Somerville" data-size="2100" data-price="5600" data-amenities="loading,parking">
               <img src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1000&q=80" alt="Flex warehouse-style unit">
               <div class="property-content">
                 <div class="property-top">
@@ -187,10 +196,13 @@
                   <span>$5,600/mo</span>
                   <span>2-5 months</span>
                 </div>
+                <div class="property-actions">
+                  <button class="property-open-btn" type="button" data-open-property>View details</button>
+                </div>
               </div>
             </article>
 
-            <article class="property-card" data-location="Boston" data-size="950" data-price="3400" data-amenities="foot-traffic">
+            <article class="property-card" data-property-id="south-end-showcase" data-location="Boston" data-size="950" data-price="3400" data-amenities="foot-traffic">
               <img src="https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?auto=format&fit=crop&w=1000&q=80" alt="Compact street-facing retail unit">
               <div class="property-content">
                 <div class="property-top">
@@ -206,10 +218,13 @@
                   <span>$3,400/mo</span>
                   <span>1-2 months</span>
                 </div>
+                <div class="property-actions">
+                  <button class="property-open-btn" type="button" data-open-property>View details</button>
+                </div>
               </div>
             </article>
 
-            <article class="property-card" data-location="Boston" data-size="1800" data-price="5900" data-amenities="conference,foot-traffic">
+            <article class="property-card" data-property-id="financial-district-showroom" data-location="Boston" data-size="1800" data-price="5900" data-amenities="conference,foot-traffic">
               <img src="https://images.unsplash.com/photo-1497215842964-222b430dc094?auto=format&fit=crop&w=1000&q=80" alt="Retail showroom with conference lounge">
               <div class="property-content">
                 <div class="property-top">
@@ -224,6 +239,9 @@
                 <div class="property-meta">
                   <span>$5,900/mo</span>
                   <span>2-5 months</span>
+                </div>
+                <div class="property-actions">
+                  <button class="property-open-btn" type="button" data-open-property>View details</button>
                 </div>
               </div>
             </article>
@@ -311,6 +329,43 @@
 
         <button class="btn btn-primary btn-block" type="submit">Request information</button>
       </form>
+    </div>
+  </div>
+
+  <div class="modal" id="property-modal" aria-hidden="true" role="dialog" aria-labelledby="property-modal-title">
+    <div class="modal-backdrop" data-close-property></div>
+    <div class="modal-panel property-panel">
+      <button class="modal-close" aria-label="Close property details" data-close-property>&times;</button>
+      <p class="eyebrow" id="property-modal-location">Location</p>
+      <h2 id="property-modal-title">Property details</h2>
+      <p class="property-modal-subtitle" id="property-modal-subtitle">Size | Price | Term</p>
+      <div class="property-modal-layout">
+        <img id="property-modal-image" src="" alt="Property preview image">
+        <div>
+          <p id="property-modal-description"></p>
+          <div class="property-spec-grid">
+            <article>
+              <span>Availability</span>
+              <strong id="property-modal-availability"></strong>
+            </article>
+            <article>
+              <span>Best for</span>
+              <strong id="property-modal-best-for"></strong>
+            </article>
+            <article>
+              <span>Utilities</span>
+              <strong id="property-modal-utilities"></strong>
+            </article>
+            <article>
+              <span>Buildout</span>
+              <strong id="property-modal-buildout"></strong>
+            </article>
+          </div>
+          <h3>Highlights</h3>
+          <ul class="property-highlights" id="property-modal-highlights"></ul>
+          <button class="btn btn-primary btn-block" type="button" data-property-contact>Ask about this property</button>
+        </div>
+      </div>
     </div>
   </div>
 
