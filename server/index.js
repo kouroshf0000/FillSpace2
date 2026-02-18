@@ -1015,13 +1015,6 @@ app.use("/api", (_req, res) => {
 
 app.use(express.static(path.join(__dirname, "..")));
 
-app.get("*", (req, res) => {
-  if (req.path.startsWith("/api/")) {
-    return res.status(404).json({ error: "Not found." });
-  }
-  return res.sendFile(path.join(__dirname, "..", "index.html"));
-});
-
 app.use((error, _req, res, _next) => {
   console.error(error);
   res.status(500).json({ error: "Unexpected server error." });
