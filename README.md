@@ -5,7 +5,7 @@ A sleek, multi-page MVP website for FillSpace inspired by marketplace UX pattern
 ## Pages
 
 - `index.html` - Home
-- `about.html` - About / How it Works
+- `about.html` - About
 - `browse.html` - Browse Properties
 - `ask-info.html` - Contact / inquiry form
 
