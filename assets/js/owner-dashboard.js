@@ -29,7 +29,6 @@ const ownerState = {
   if (ownerName) ownerName.textContent = user.name;
   if (ownerCompany) ownerCompany.textContent = user.company || user.email;
 
-  initServerStatusIndicator();
   wireMobileMenu();
   wireDashboardNav();
   wireLogout();
@@ -41,37 +40,6 @@ const ownerState = {
 
   await loadAllDashboardData();
 })();
-
-function initServerStatusIndicator() {
-  const navRow = document.querySelector(".nav-row");
-  if (!(navRow instanceof HTMLElement)) {
-    return;
-  }
-  if (navRow.querySelector(".server-status-badge")) {
-    return;
-  }
-
-  const badge = document.createElement("span");
-  badge.className = "server-status-badge is-checking";
-  badge.textContent = "Server: checking";
-  navRow.appendChild(badge);
-
-  const setState = (state) => {
-    badge.classList.remove("is-checking", "is-online", "is-offline");
-    if (state === "online") {
-      badge.classList.add("is-online");
-      badge.textContent = "Server: online";
-      return;
-    }
-    badge.classList.add("is-offline");
-    badge.textContent = "Server: offline";
-  };
-
-  fetch("/api/health", { cache: "no-store" })
-    .then((res) => (res.ok ? res.json() : Promise.reject(new Error("offline"))))
-    .then(() => setState("online"))
-    .catch(() => setState("offline"));
-}
 
 function wireMobileMenu() {
   const nav = document.querySelector(".site-nav");
