@@ -763,6 +763,40 @@ app.get("/api/owner/legal", requireRole("owner"), (_req, res) => {
   });
 });
 
+app.get(
+  "/api/owner/inquiries",
+  requireRole("owner"),
+  runAsync(async (_req, res) => {
+    const rows = db.prepare(`
+      SELECT
+        id,
+        name,
+        email,
+        company,
+        goal,
+        timeline,
+        budget,
+        message,
+        property_interest,
+        property_location,
+        source,
+        subject,
+        email_forwarded,
+        forward_status,
+        created_at
+      FROM inquiries
+      ORDER BY created_at DESC
+      LIMIT 100
+    `).all();
+    return res.json({
+      inquiries: rows.map((row) => ({
+        ...row,
+        email_forwarded: Boolean(row.email_forwarded),
+      })),
+    });
+  })
+);
+
 app.post(
   "/api/owner/stripe/connect",
   requireRole("owner"),

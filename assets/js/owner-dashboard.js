@@ -391,6 +391,7 @@ async function loadAllDashboardData() {
     loadOwnerProperties(),
     loadOwnerAnalytics(),
     loadOwnerFinance(),
+    loadOwnerInquiries(),
     loadOwnerLegal(),
   ]);
   if (results.some((result) => result.status === "rejected")) {
@@ -550,6 +551,44 @@ async function loadOwnerLegal() {
     const item = document.createElement("li");
     item.textContent = `${doc.name} (${doc.category}) · Updated ${doc.updated_at}`;
     list.appendChild(item);
+  }
+}
+
+async function loadOwnerInquiries() {
+  const res = await fetch("/api/owner/inquiries");
+  if (!res.ok) {
+    notifyDashboardError("Unable to load inquiry inbox.");
+    return;
+  }
+  const payload = await res.json();
+  const tbody = document.querySelector("#owner-inquiries-table tbody");
+  if (!(tbody instanceof HTMLElement)) {
+    return;
+  }
+  tbody.innerHTML = "";
+
+  for (const inquiry of payload.inquiries || []) {
+    const row = document.createElement("tr");
+    const created = escapeHtml(String(inquiry.created_at || "").slice(0, 16).replace("T", " "));
+    const goal = escapeHtml(String(inquiry.goal || ""));
+    const source = escapeHtml(String(inquiry.source || ""));
+    const message = escapeHtml(String(inquiry.message || ""));
+    const shortenedMessage = message.length > 120 ? `${message.slice(0, 117)}...` : message;
+    row.innerHTML = `
+      <td>${created}</td>
+      <td>${escapeHtml(inquiry.name || "")}</td>
+      <td>${escapeHtml(inquiry.email || "")}</td>
+      <td>${goal}</td>
+      <td>${source}</td>
+      <td>${shortenedMessage}</td>
+    `;
+    tbody.appendChild(row);
+  }
+
+  if (!tbody.children.length) {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td colspan="6">No inquiries yet.</td>`;
+    tbody.appendChild(row);
   }
 }
 

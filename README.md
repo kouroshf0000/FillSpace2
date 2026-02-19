@@ -88,6 +88,7 @@ Seeded local demo users:
 - `GET /api/properties`
 - `POST /api/owner/properties`
 - `GET /api/owner/dashboard`
+- `GET /api/owner/inquiries`
 - `GET /api/tenant/dashboard`
 - `POST /api/tenant/favorites/:propertyId`
 - `POST /api/payments/checkout`
