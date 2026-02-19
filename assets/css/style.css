@@ -1009,18 +1009,6 @@ textarea:focus {
   gap: 0.62rem;
 }
 
-.jotform-embed-wrap {
-  margin-top: 0.9rem;
-  min-height: 860px;
-}
-
-.jotform-embed-wrap iframe {
-  width: 100% !important;
-  min-height: 860px !important;
-  border: 0;
-  border-radius: 0.9rem;
-}
-
 .ask-side-stack {
   display: grid;
   gap: 1rem;

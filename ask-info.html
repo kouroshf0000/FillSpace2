@@ -55,11 +55,65 @@
       <div class="container ask-layout">
         <article class="ask-form-card">
           <h2>Send us your request</h2>
-          <p>Use the secure Jotform below to send your request directly.</p>
-          <p id="ask-context-note" class="form-note"></p>
-          <div class="jotform-embed-wrap">
-            <script type="text/javascript" src="https://form.jotform.com/jsform/260495754274870"></script>
-          </div>
+          <p>Use this form to contact our team directly.</p>
+          <form
+            id="ask-info-form"
+            class="ask-form"
+            method="post"
+            novalidate
+          >
+            <input type="hidden" name="_subject" id="ask-subject" value="New FillSpace inquiry">
+            <input type="hidden" name="Source" id="ask-source" value="website">
+
+            <div id="ask-property-group">
+              <label for="ask-property-context">Property of interest</label>
+              <input id="ask-property-context" name="Property of interest" type="text" readonly>
+            </div>
+
+            <div id="ask-location-group">
+              <label for="ask-location-context">Property location</label>
+              <input id="ask-location-context" name="Property location" type="text" readonly>
+            </div>
+
+            <label for="ask-name">Full name</label>
+            <input id="ask-name" name="Name" type="text" required>
+
+            <label for="ask-email">Work email</label>
+            <input id="ask-email" name="Email" type="email" required>
+
+            <label for="ask-company">Company / brand</label>
+            <input id="ask-company" name="Company" type="text" required>
+
+            <label for="ask-goal">Primary goal</label>
+            <select id="ask-goal" name="Primary goal" required>
+              <option value="">Select one</option>
+              <option value="tenant">Find space for our business</option>
+              <option value="owner">List a vacant commercial unit</option>
+              <option value="partner">Explore partnership opportunities</option>
+            </select>
+
+            <label for="ask-timeline">Timeline</label>
+            <select id="ask-timeline" name="Timeline" required>
+              <option value="">Select one</option>
+              <option value="asap">As soon as possible</option>
+              <option value="30-days">Within 30 days</option>
+              <option value="60-days">Within 60 days</option>
+              <option value="90-days">Within 90 days</option>
+              <option value="planning">Planning ahead</option>
+            </select>
+
+            <label for="ask-budget">Estimated monthly budget</label>
+            <input id="ask-budget" name="Estimated monthly budget" type="text" placeholder="e.g. $5,000 - $8,000">
+
+            <label for="ask-message">Message</label>
+            <textarea id="ask-message" name="Message" rows="5" placeholder="Tell us about your ideal size, use case, and preferred area." required></textarea>
+
+            <button class="btn btn-primary btn-block" id="ask-submit-btn" type="submit">Send message</button>
+            <p class="form-note">
+              Messages from this form are sent to <strong>hello@fillspace.com</strong>.
+            </p>
+            <p id="ask-submit-status" class="form-note" role="status" aria-live="polite"></p>
+          </form>
         </article>
 
         <aside class="ask-side-stack">

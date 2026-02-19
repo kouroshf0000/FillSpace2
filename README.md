@@ -47,7 +47,7 @@ Required for marketplace payments:
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET` (optional but recommended for webhook signature validation)
 
-Required for owner listing notification emails (and optional backend inquiry forwarding):
+Required for direct inquiry delivery and owner listing notification emails:
 
 - `SMTP_HOST`
 - `SMTP_PORT`
@@ -61,6 +61,16 @@ Optional inquiry fallback (if SMTP is not configured):
 
 - `INQUIRY_FORWARD_ENABLED`
 - `INQUIRY_FORWARD_URL`
+
+### Recommended setup for reliable inquiry emails
+
+For best deliverability and lowest spam risk, use SMTP via a transactional email provider (Resend, Postmark, or SendGrid) instead of form-forwarding services.
+
+1. Set `INQUIRY_EMAIL_TO=kouroshf08@gmail.com`.
+2. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, and `SMTP_PASS` from your provider.
+3. Use a verified sending domain for `INQUIRY_EMAIL_FROM` (for example `leads@fillspace.com`).
+4. Add SPF, DKIM, and DMARC records for your sending domain.
+5. Keep `INQUIRY_FORWARD_ENABLED=false` once SMTP is working.
 
 ## Demo credentials
 
@@ -116,6 +126,5 @@ Seeded local demo users:
 - Font stack includes Airbnb Cereal (`Airbnb Cereal App`) with system fallbacks.
 - Brand palette is matched to the deck PDF and centralized in `assets/css/style.css`.
 - Contact CTAs route users to `ask-info.html`.
-- `ask-info.html` now embeds Jotform (`260495754274870`) for direct lead capture and Jotform-managed notifications.
-- Backend `POST /api/inquiries` remains available for API-based ingestion and stores submissions in SQLite.
+- Ask-info submissions post to backend `POST /api/inquiries`, are saved in SQLite, and deliver via SMTP when configured.
 

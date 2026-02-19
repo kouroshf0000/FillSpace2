@@ -626,19 +626,11 @@ function initAskInfoFormPrefill() {
   const source = String(params.get("source") || "website").trim();
   const goal = String(params.get("goal") || "").trim();
   const contextBadge = document.getElementById("ask-context-badge");
-  const contextNote = document.getElementById("ask-context-note");
 
   if (contextBadge instanceof HTMLElement && property) {
     contextBadge.textContent = location ? `${property} • ${location}` : property;
   } else if (contextBadge instanceof HTMLElement) {
     contextBadge.textContent = "General inquiry";
-  }
-
-  if (contextNote instanceof HTMLElement && property) {
-    const details = location ? `${property} in ${location}` : property;
-    contextNote.textContent = `Context detected: ${details}. Mention this in your Jotform message for faster routing.`;
-  } else if (contextNote instanceof HTMLElement) {
-    contextNote.textContent = "Tip: include preferred location, size, and timeline so we can respond faster.";
   }
 
   const form = document.getElementById("ask-info-form");
