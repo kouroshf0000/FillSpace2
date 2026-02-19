@@ -22,41 +22,6 @@
     authMessage.classList.toggle("is-error", isError);
   };
 
-  const initServerStatusBadge = () => {
-    const panel = document.querySelector(".auth-panel");
-    if (!(panel instanceof HTMLElement)) {
-      return;
-    }
-    if (panel.querySelector(".server-status-badge")) {
-      return;
-    }
-    const badge = document.createElement("span");
-    badge.className = "server-status-badge is-checking";
-    badge.textContent = "Server: checking";
-    const heading = panel.querySelector("h1");
-    if (heading?.parentElement) {
-      heading.insertAdjacentElement("afterend", badge);
-    } else {
-      panel.prepend(badge);
-    }
-
-    const setState = (state) => {
-      badge.classList.remove("is-checking", "is-online", "is-offline");
-      if (state === "online") {
-        badge.classList.add("is-online");
-        badge.textContent = "Server: online";
-        return;
-      }
-      badge.classList.add("is-offline");
-      badge.textContent = "Server: offline";
-    };
-
-    fetch("/api/health", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("offline"))))
-      .then(() => setState("online"))
-      .catch(() => setState("offline"));
-  };
-
   const setActiveTab = (tabName) => {
     const showLogin = tabName === "login";
     if (loginForm instanceof HTMLElement) {
@@ -153,7 +118,6 @@
   }
 
   setActiveTab("login");
-  initServerStatusBadge();
 
   if (window.location.protocol === "file:") {
     setMessage("Open this app at http://localhost:4173 (not file://). Run: npm run dev", true);
