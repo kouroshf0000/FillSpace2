@@ -6,6 +6,12 @@ const tenantState = {
   reservationsUpcoming: [],
   reservationsHistory: [],
   financeRows: [],
+  financeSummary: {
+    reservation_count: 0,
+    confirmed_total: 0,
+    platform_fees: 0,
+    tax_year: new Date().getFullYear(),
+  },
 };
 
 (async function initTenantDashboard() {
@@ -24,12 +30,48 @@ const tenantState = {
   setText("tenant-name", user.name);
   setText("tenant-company", user.company || user.email);
 
+  wireMobileMenu();
   wireDashboardNav();
   wireLogout();
   wireBookingForm();
+  handleCheckoutReturnState();
 
   await loadAllTenantData();
 })();
+
+function wireMobileMenu() {
+  const nav = document.querySelector(".site-nav");
+  const menuToggle = document.querySelector(".menu-toggle");
+  if (!(nav instanceof HTMLElement) || !(menuToggle instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  menuToggle.addEventListener("click", () => {
+    const willOpen = !nav.classList.contains("open");
+    nav.classList.toggle("open", willOpen);
+    menuToggle.setAttribute("aria-expanded", String(willOpen));
+  });
+
+  nav.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      nav.classList.remove("open");
+      menuToggle.setAttribute("aria-expanded", "false");
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      !target.closest(".site-nav") &&
+      !target.closest(".menu-toggle") &&
+      nav.classList.contains("open")
+    ) {
+      nav.classList.remove("open");
+      menuToggle.setAttribute("aria-expanded", "false");
+    }
+  });
+}
 
 function wireDashboardNav() {
   const navButtons = Array.from(document.querySelectorAll("[data-dash-target]"));
@@ -142,9 +184,24 @@ function wireBookingForm() {
   });
 }
 
+function handleCheckoutReturnState() {
+  const params = new URLSearchParams(window.location.search);
+  const checkoutState = String(params.get("checkout") || "");
+  if (!checkoutState) {
+    return;
+  }
+  const message = document.getElementById("tenant-booking-message");
+  if (checkoutState === "success") {
+    setDashboardMessage(message, "Stripe checkout completed. We are finalizing your reservation.");
+  } else if (checkoutState === "cancelled") {
+    setDashboardMessage(message, "Checkout was cancelled. You can try again anytime.", true);
+  }
+}
+
 async function loadAllTenantData() {
   await Promise.all([loadProperties(), loadReservationsAndFinance(), loadFavorites()]);
   renderMetrics();
+  renderFinanceSummary();
   renderBookingPropertyOptions();
   renderTenantBrowseGrid();
 }
@@ -173,11 +230,17 @@ async function loadReservationsAndFinance() {
     const payload = await resDash.json();
     tenantState.financeRows = payload.reservations || [];
     if (payload.finance) {
-      tenantState.confirmedSpend = payload.finance.confirmed_total || 0;
+      tenantState.financeSummary = {
+        reservation_count: payload.finance.reservation_count || 0,
+        confirmed_total: payload.finance.confirmed_total || 0,
+        platform_fees: payload.finance.platform_fees || 0,
+        tax_year: payload.finance.tax_year || new Date().getFullYear(),
+      };
     }
   }
   renderReservationTables();
   renderFinanceTable();
+  renderFinanceSummary();
 }
 
 async function loadFavorites() {
@@ -195,7 +258,14 @@ function renderMetrics() {
   setText("tenant-metric-upcoming", String(tenantState.reservationsUpcoming.length));
   setText("tenant-metric-history", String(tenantState.reservationsHistory.length));
   setText("tenant-metric-favorites", String(tenantState.favorites.length));
-  setText("tenant-metric-spend", formatCurrency(tenantState.confirmedSpend || 0));
+  setText("tenant-metric-spend", formatCurrency(tenantState.financeSummary.confirmed_total || 0));
+}
+
+function renderFinanceSummary() {
+  setText("tenant-tax-year", String(tenantState.financeSummary.tax_year || new Date().getFullYear()));
+  setText("tenant-finance-res-count", String(tenantState.financeSummary.reservation_count || 0));
+  setText("tenant-finance-confirmed", formatCurrency(tenantState.financeSummary.confirmed_total || 0));
+  setText("tenant-finance-fees", formatCurrency(tenantState.financeSummary.platform_fees || 0));
 }
 
 function renderReservationTables() {
@@ -305,6 +375,9 @@ function renderTenantBrowseGrid() {
   for (const property of tenantState.properties.slice(0, 12)) {
     const card = createTenantPropertyCard(property, favoriteSet.has(property.id));
     grid.appendChild(card);
+  }
+  if (!grid.children.length) {
+    grid.innerHTML = `<p>No active properties are available yet.</p>`;
   }
 }
 

@@ -155,6 +155,10 @@ const reservationSchema = z.object({
   endDate: z.string().trim().min(10),
 });
 
+const propertyStatusSchema = z.object({
+  status: z.enum(["active", "draft", "paused"]),
+});
+
 app.use(cookieParser());
 
 app.post(
@@ -474,6 +478,65 @@ app.put(
 
     const updated = db.prepare("SELECT * FROM properties WHERE id = ?").get(propertyId);
     return res.json({ property: normalizePropertyRow(updated) });
+  })
+);
+
+app.patch(
+  "/api/owner/properties/:id/status",
+  requireRole("owner"),
+  runAsync(async (req, res) => {
+    const propertyId = Number(req.params.id);
+    if (!Number.isFinite(propertyId)) {
+      return res.status(400).json({ error: "Invalid property id." });
+    }
+
+    const parsed = propertyStatusSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid status payload." });
+    }
+
+    const existing = db.prepare("SELECT * FROM properties WHERE id = ? AND owner_id = ?").get(propertyId, req.user.id);
+    if (!existing) {
+      return res.status(404).json({ error: "Property not found for this owner." });
+    }
+
+    db.prepare(`
+      UPDATE properties
+      SET status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND owner_id = ?
+    `).run(parsed.data.status, propertyId, req.user.id);
+
+    const updated = db.prepare("SELECT * FROM properties WHERE id = ?").get(propertyId);
+    return res.json({ property: normalizePropertyRow(updated) });
+  })
+);
+
+app.delete(
+  "/api/owner/properties/:id",
+  requireRole("owner"),
+  runAsync(async (req, res) => {
+    const propertyId = Number(req.params.id);
+    if (!Number.isFinite(propertyId)) {
+      return res.status(400).json({ error: "Invalid property id." });
+    }
+
+    const existing = db.prepare("SELECT * FROM properties WHERE id = ? AND owner_id = ?").get(propertyId, req.user.id);
+    if (!existing) {
+      return res.status(404).json({ error: "Property not found for this owner." });
+    }
+
+    const reservationCount = db
+      .prepare("SELECT COUNT(*) AS count FROM reservations WHERE property_id = ?")
+      .get(propertyId)?.count;
+    if (Number(reservationCount || 0) > 0) {
+      return res.status(409).json({
+        error: "This listing has reservation history and cannot be deleted. Pause it instead.",
+      });
+    }
+
+    db.prepare("DELETE FROM favorites WHERE property_id = ?").run(propertyId);
+    db.prepare("DELETE FROM properties WHERE id = ? AND owner_id = ?").run(propertyId, req.user.id);
+    return res.json({ ok: true });
   })
 );
 
@@ -805,7 +868,8 @@ app.get(
     const financeSummary = db.prepare(`
       SELECT
         COUNT(*) AS reservation_count,
-        COALESCE(SUM(CASE WHEN status = 'confirmed' THEN total_cents ELSE 0 END), 0) AS confirmed_total_cents
+        COALESCE(SUM(CASE WHEN status = 'confirmed' THEN total_cents ELSE 0 END), 0) AS confirmed_total_cents,
+        COALESCE(SUM(CASE WHEN status = 'confirmed' THEN platform_fee_cents ELSE 0 END), 0) AS platform_fee_total_cents
       FROM reservations
       WHERE tenant_id = ?
     `).get(req.user.id);
@@ -821,6 +885,8 @@ app.get(
       finance: {
         reservation_count: financeSummary.reservation_count || 0,
         confirmed_total: usdFromCents(financeSummary.confirmed_total_cents || 0),
+        platform_fees: usdFromCents(financeSummary.platform_fee_total_cents || 0),
+        tax_year: new Date().getFullYear(),
       },
     });
   })

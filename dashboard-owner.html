@@ -17,7 +17,14 @@
         <span class="brand-mark">F</span>
         <span class="brand-text">FillSpace</span>
       </a>
-      <nav class="site-nav" aria-label="Dashboard quick links">
+
+      <button class="menu-toggle" aria-expanded="false" aria-controls="site-nav">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav id="site-nav" class="site-nav" aria-label="Dashboard quick links">
         <a href="browse.html">Browse</a>
         <a href="ask-info.html">Support</a>
       </nav>
@@ -68,6 +75,7 @@
           </div>
 
           <form id="owner-property-form" class="dashboard-form">
+            <input id="prop-id" name="property_id" type="hidden">
             <div class="form-grid">
               <div>
                 <label for="prop-title">Property title</label>
@@ -134,7 +142,10 @@
             <label for="prop-description">Description</label>
             <textarea id="prop-description" name="description" rows="4" required></textarea>
 
-            <button class="btn btn-primary" type="submit">Add property</button>
+            <div class="dashboard-form-actions">
+              <button class="btn btn-primary" id="owner-property-submit" type="submit">Add property</button>
+              <button class="btn btn-secondary is-hidden" id="owner-property-cancel" type="button">Cancel edit</button>
+            </div>
             <p id="owner-property-message" class="dashboard-message" role="status" aria-live="polite"></p>
           </form>
 
@@ -146,6 +157,7 @@
                   <th>Status</th>
                   <th>Price</th>
                   <th>Term</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody></tbody>

@@ -28,6 +28,13 @@
         menuToggle.setAttribute("aria-expanded", "false");
       }
     });
+
+    nav.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => {
+        nav.classList.remove("open");
+        menuToggle.setAttribute("aria-expanded", "false");
+      });
+    });
   }
 
   const openModal = (modalNode) => {
@@ -75,6 +82,7 @@
     openModal,
     closeModal,
   });
+  initFeaturedPropertyLinks();
   initAskInfoFormPrefill();
   initScrollReveal();
 })();
@@ -426,11 +434,67 @@ function initBrowsePropertyDetails(modalApi) {
     }
   });
 
+  const openFromQuery = () => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedSlug = String(params.get("open") || "").trim().toLowerCase();
+    if (!requestedSlug) {
+      return;
+    }
+    const card = cards.find(
+      (entry) => String(entry.dataset.propertyId || "").trim().toLowerCase() === requestedSlug
+    );
+    if (!card) {
+      return;
+    }
+    openDetails(card);
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  openFromQuery();
+
   if (propertyContactLink instanceof HTMLAnchorElement) {
     propertyContactLink.addEventListener("click", () => {
       modalApi.closeModal(propertyModal);
     });
   }
+}
+
+function initFeaturedPropertyLinks() {
+  const featuredCards = Array.from(document.querySelectorAll(".page-home .property-card[data-featured-slug]"));
+  if (!featuredCards.length) {
+    return;
+  }
+
+  featuredCards.forEach((card) => {
+    const slug = String(card.dataset.featuredSlug || "").trim();
+    if (!slug) {
+      return;
+    }
+    const titleText = card.querySelector("h3")?.textContent?.trim() || "featured property";
+    card.setAttribute("tabindex", "0");
+    card.setAttribute("role", "link");
+    card.setAttribute("aria-label", `Open details for ${titleText}`);
+
+    const openCard = () => {
+      const params = new URLSearchParams({ open: slug });
+      window.location.href = `browse.html?${params.toString()}`;
+    };
+
+    card.addEventListener("click", (event) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest("a, button, input, select, textarea, label")) {
+        return;
+      }
+      openCard();
+    });
+
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openCard();
+      }
+    });
+  });
 }
 
 function setText(node, value) {

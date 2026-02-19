@@ -1,5 +1,10 @@
 "use strict";
 
+const ownerState = {
+  editingPropertyId: null,
+  properties: [],
+};
+
 (async function initOwnerDashboard() {
   const authRes = await fetch("/api/auth/me");
   if (!authRes.ok) {
@@ -18,13 +23,51 @@
   if (ownerName) ownerName.textContent = user.name;
   if (ownerCompany) ownerCompany.textContent = user.company || user.email;
 
+  wireMobileMenu();
   wireDashboardNav();
   wireLogout();
   wireConnectStripe();
-  wirePropertyCreate();
+  wirePropertyForm();
+  wirePropertyTableActions();
+  setPropertyFormMode(null);
+  handleStripeReturnState();
 
   await loadAllDashboardData();
 })();
+
+function wireMobileMenu() {
+  const nav = document.querySelector(".site-nav");
+  const menuToggle = document.querySelector(".menu-toggle");
+  if (!(nav instanceof HTMLElement) || !(menuToggle instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  menuToggle.addEventListener("click", () => {
+    const willOpen = !nav.classList.contains("open");
+    nav.classList.toggle("open", willOpen);
+    menuToggle.setAttribute("aria-expanded", String(willOpen));
+  });
+
+  nav.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      nav.classList.remove("open");
+      menuToggle.setAttribute("aria-expanded", "false");
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      !target.closest(".site-nav") &&
+      !target.closest(".menu-toggle") &&
+      nav.classList.contains("open")
+    ) {
+      nav.classList.remove("open");
+      menuToggle.setAttribute("aria-expanded", "false");
+    }
+  });
+}
 
 function wireDashboardNav() {
   const navButtons = Array.from(document.querySelectorAll("[data-dash-target]"));
@@ -57,6 +100,20 @@ function wireLogout() {
   });
 }
 
+function handleStripeReturnState() {
+  const params = new URLSearchParams(window.location.search);
+  const stripeState = String(params.get("stripe") || "");
+  if (!stripeState) {
+    return;
+  }
+  const message = document.getElementById("owner-property-message");
+  if (stripeState === "connected") {
+    setDashboardMessage(message, "Stripe onboarding complete. Your payouts are now ready.");
+  } else if (stripeState === "refresh") {
+    setDashboardMessage(message, "Stripe onboarding was interrupted. You can reconnect at any time.");
+  }
+}
+
 function wireConnectStripe() {
   const button = document.getElementById("connect-stripe-btn");
   if (!(button instanceof HTMLButtonElement)) {
@@ -86,42 +143,41 @@ function wireConnectStripe() {
   });
 }
 
-function wirePropertyCreate() {
+function wirePropertyForm() {
   const form = document.getElementById("owner-property-form");
   const message = document.getElementById("owner-property-message");
+  const cancelEditButton = document.getElementById("owner-property-cancel");
   if (!(form instanceof HTMLFormElement)) {
     return;
+  }
+
+  if (cancelEditButton instanceof HTMLButtonElement) {
+    cancelEditButton.addEventListener("click", () => {
+      resetPropertyForm(form);
+      setPropertyFormMode(null);
+      setDashboardMessage(message, "Edit cancelled.");
+    });
   }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(form);
-    const amenitiesRaw = String(formData.get("amenities") || "");
-    const payload = {
-      title: String(formData.get("title") || "").trim(),
-      location: String(formData.get("location") || "").trim(),
-      city: String(formData.get("city") || "").trim(),
-      state: String(formData.get("state") || "").trim(),
-      size_sqft: Number(formData.get("size_sqft") || 0),
-      monthly_price: Number(formData.get("monthly_price") || 0),
-      min_term_months: Number(formData.get("min_term_months") || 0),
-      max_term_months: Number(formData.get("max_term_months") || 0),
-      availability_text: String(formData.get("availability_text") || "").trim(),
-      image_url: String(formData.get("image_url") || "").trim(),
-      best_for: String(formData.get("best_for") || "").trim(),
-      status: String(formData.get("status") || "active"),
-      utilities: String(formData.get("utilities") || "").trim(),
-      buildout: String(formData.get("buildout") || "").trim(),
-      description: String(formData.get("description") || "").trim(),
-      amenities: amenitiesRaw
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
-    };
+    const payload = formPayloadFromData(formData);
 
-    setDashboardMessage(message, "Saving listing...");
-    const res = await fetch("/api/owner/properties", {
-      method: "POST",
+    if (payload.max_term_months < payload.min_term_months) {
+      setDashboardMessage(message, "Max term must be greater than or equal to min term.", true);
+      return;
+    }
+
+    const isEditing = Number.isFinite(ownerState.editingPropertyId);
+    const endpoint = isEditing
+      ? `/api/owner/properties/${ownerState.editingPropertyId}`
+      : "/api/owner/properties";
+    const method = isEditing ? "PUT" : "POST";
+
+    setDashboardMessage(message, isEditing ? "Saving property updates..." : "Saving listing...");
+    const res = await fetch(endpoint, {
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
@@ -132,10 +188,182 @@ function wirePropertyCreate() {
       return;
     }
 
-    form.reset();
-    setDashboardMessage(message, "Property added. It is now available in browse results.");
+    resetPropertyForm(form);
+    setPropertyFormMode(null);
+    setDashboardMessage(
+      message,
+      isEditing
+        ? "Property updated. Browse listings reflect the latest changes."
+        : "Property added. It is now available in browse results."
+    );
     await loadAllDashboardData();
   });
+}
+
+function wirePropertyTableActions() {
+  const tbody = document.querySelector("#owner-properties-table tbody");
+  const form = document.getElementById("owner-property-form");
+  const message = document.getElementById("owner-property-message");
+  if (!(tbody instanceof HTMLElement) || !(form instanceof HTMLFormElement)) {
+    return;
+  }
+
+  tbody.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const actionButton = target.closest("[data-owner-action]");
+    if (!(actionButton instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    const action = String(actionButton.dataset.ownerAction || "");
+    const propertyId = Number(actionButton.dataset.propertyId);
+    if (!Number.isFinite(propertyId)) {
+      return;
+    }
+
+    if (action === "edit") {
+      const property = ownerState.properties.find((item) => item.id === propertyId);
+      if (!property) {
+        setDashboardMessage(message, "Property not found for edit.", true);
+        return;
+      }
+      fillPropertyForm(form, property);
+      setPropertyFormMode(property.id);
+      setDashboardMessage(message, `Editing ${property.title}.`);
+      form.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    if (action === "toggle-status") {
+      const property = ownerState.properties.find((item) => item.id === propertyId);
+      if (!property) {
+        return;
+      }
+      const nextStatus = property.status === "active" ? "paused" : "active";
+      setDashboardMessage(message, `Updating ${property.title} status...`);
+      const res = await fetch(`/api/owner/properties/${propertyId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDashboardMessage(message, data.error || "Could not update listing status.", true);
+        return;
+      }
+      setDashboardMessage(message, `${property.title} is now ${nextStatus}.`);
+      await loadAllDashboardData();
+      return;
+    }
+
+    if (action === "delete") {
+      const property = ownerState.properties.find((item) => item.id === propertyId);
+      if (!property) {
+        return;
+      }
+      const confirmed = window.confirm(
+        `Delete "${property.title}"? Existing reservations will block deletion.`
+      );
+      if (!confirmed) {
+        return;
+      }
+
+      setDashboardMessage(message, `Deleting ${property.title}...`);
+      const res = await fetch(`/api/owner/properties/${propertyId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDashboardMessage(message, data.error || "Could not delete listing.", true);
+        return;
+      }
+
+      if (ownerState.editingPropertyId === propertyId) {
+        resetPropertyForm(form);
+        setPropertyFormMode(null);
+      }
+      setDashboardMessage(message, `${property.title} deleted.`);
+      await loadAllDashboardData();
+    }
+  });
+}
+
+function formPayloadFromData(formData) {
+  const amenitiesRaw = String(formData.get("amenities") || "");
+  return {
+    title: String(formData.get("title") || "").trim(),
+    location: String(formData.get("location") || "").trim(),
+    city: String(formData.get("city") || "").trim(),
+    state: String(formData.get("state") || "").trim(),
+    size_sqft: Number(formData.get("size_sqft") || 0),
+    monthly_price: Number(formData.get("monthly_price") || 0),
+    min_term_months: Number(formData.get("min_term_months") || 0),
+    max_term_months: Number(formData.get("max_term_months") || 0),
+    availability_text: String(formData.get("availability_text") || "").trim(),
+    image_url: String(formData.get("image_url") || "").trim(),
+    best_for: String(formData.get("best_for") || "").trim(),
+    status: String(formData.get("status") || "active"),
+    utilities: String(formData.get("utilities") || "").trim(),
+    buildout: String(formData.get("buildout") || "").trim(),
+    description: String(formData.get("description") || "").trim(),
+    amenities: amenitiesRaw
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  };
+}
+
+function fillPropertyForm(form, property) {
+  const setField = (name, value) => {
+    const node = form.elements.namedItem(name);
+    if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement || node instanceof HTMLSelectElement) {
+      node.value = String(value ?? "");
+    }
+  };
+
+  setField("property_id", property.id);
+  setField("title", property.title);
+  setField("location", property.location);
+  setField("city", property.city);
+  setField("state", property.state);
+  setField("size_sqft", property.size_sqft);
+  setField("monthly_price", property.monthly_price);
+  setField("min_term_months", property.min_term_months);
+  setField("max_term_months", property.max_term_months);
+  setField("availability_text", property.availability_text);
+  setField("image_url", property.image_url);
+  setField("best_for", property.best_for);
+  setField("status", property.status);
+  setField("utilities", property.utilities);
+  setField("buildout", property.buildout);
+  setField("description", property.description);
+  setField("amenities", Array.isArray(property.amenities) ? property.amenities.join(", ") : "");
+}
+
+function resetPropertyForm(form) {
+  form.reset();
+  const propertyIdField = form.elements.namedItem("property_id");
+  if (propertyIdField instanceof HTMLInputElement) {
+    propertyIdField.value = "";
+  }
+}
+
+function setPropertyFormMode(propertyId) {
+  const numericId = Number(propertyId);
+  ownerState.editingPropertyId = Number.isInteger(numericId) && numericId > 0 ? numericId : null;
+
+  const submitButton = document.getElementById("owner-property-submit");
+  const cancelButton = document.getElementById("owner-property-cancel");
+  if (submitButton instanceof HTMLButtonElement) {
+    submitButton.textContent = ownerState.editingPropertyId ? "Save changes" : "Add property";
+  }
+  if (cancelButton instanceof HTMLButtonElement) {
+    cancelButton.classList.toggle("is-hidden", !ownerState.editingPropertyId);
+  }
 }
 
 function setDashboardMessage(node, text, isError = false) {
@@ -184,26 +412,42 @@ async function loadOwnerProperties() {
     return;
   }
   const payload = await res.json();
+  ownerState.properties = payload.properties || [];
   const tbody = document.querySelector("#owner-properties-table tbody");
   if (!(tbody instanceof HTMLElement)) {
     return;
   }
   tbody.innerHTML = "";
 
-  for (const property of payload.properties || []) {
+  for (const property of ownerState.properties) {
+    const statusLabel = formatStatus(property.status);
+    const toggleLabel = property.status === "active" ? "Pause" : "Activate";
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${escapeHtml(property.title)}</td>
-      <td>${escapeHtml(property.status)}</td>
+      <td>${escapeHtml(statusLabel)}</td>
       <td>${formatCurrency(property.monthly_price)}</td>
       <td>${property.min_term_months}-${property.max_term_months} months</td>
+      <td>
+        <div class="property-row-actions">
+          <button class="table-action-btn" type="button" data-owner-action="edit" data-property-id="${property.id}">
+            Edit
+          </button>
+          <button class="table-action-btn" type="button" data-owner-action="toggle-status" data-property-id="${property.id}">
+            ${toggleLabel}
+          </button>
+          <button class="table-action-btn danger" type="button" data-owner-action="delete" data-property-id="${property.id}">
+            Delete
+          </button>
+        </div>
+      </td>
     `;
     tbody.appendChild(row);
   }
 
   if (!tbody.children.length) {
     const row = document.createElement("tr");
-    row.innerHTML = `<td colspan="4">No properties yet.</td>`;
+    row.innerHTML = `<td colspan="5">No properties yet.</td>`;
     tbody.appendChild(row);
   }
 }
@@ -301,6 +545,14 @@ function formatCurrency(value) {
     currency: "USD",
     minimumFractionDigits: 2,
   });
+}
+
+function formatStatus(status) {
+  const raw = String(status || "").trim();
+  if (!raw) {
+    return "Unknown";
+  }
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
 function escapeHtml(value) {

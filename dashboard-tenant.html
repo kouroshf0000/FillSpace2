@@ -17,7 +17,14 @@
         <span class="brand-mark">F</span>
         <span class="brand-text">FillSpace</span>
       </a>
-      <nav class="site-nav" aria-label="Dashboard quick links">
+
+      <button class="menu-toggle" aria-expanded="false" aria-controls="site-nav">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav id="site-nav" class="site-nav" aria-label="Dashboard quick links">
         <a href="browse.html">Browse</a>
         <a href="ask-info.html">Support</a>
       </nav>
@@ -109,6 +116,14 @@
           <div class="panel-header">
             <h3>Finance & Tax</h3>
             <p>Transaction data and reporting-friendly summaries.</p>
+          </div>
+          <div class="dashboard-notice">
+            <p><strong id="tenant-tax-year">2026</strong> reporting summary: confirmed payments, platform fees, and export-ready totals.</p>
+          </div>
+          <div class="metrics-grid finance-metrics">
+            <article><h4>Confirmed bookings</h4><p id="tenant-finance-res-count">0</p></article>
+            <article><h4>Confirmed total</h4><p id="tenant-finance-confirmed">$0.00</p></article>
+            <article><h4>Platform fees paid</h4><p id="tenant-finance-fees">$0.00</p></article>
           </div>
           <div class="table-wrap">
             <table class="dashboard-table" id="tenant-finance-table">
