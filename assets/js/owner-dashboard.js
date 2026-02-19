@@ -6,7 +6,13 @@ const ownerState = {
 };
 
 (async function initOwnerDashboard() {
-  const authRes = await fetch("/api/auth/me");
+  let authRes;
+  try {
+    authRes = await fetch("/api/auth/me");
+  } catch {
+    window.location.href = "owner-login.html?error=offline";
+    return;
+  }
   if (!authRes.ok) {
     window.location.href = "owner-login.html";
     return;
@@ -374,20 +380,31 @@ function setDashboardMessage(node, text, isError = false) {
   node.classList.toggle("is-error", isError);
 }
 
+function notifyDashboardError(text) {
+  const node = document.getElementById("owner-property-message");
+  setDashboardMessage(node, text, true);
+}
+
 async function loadAllDashboardData() {
-  await Promise.all([
+  const results = await Promise.allSettled([
     loadOwnerOverview(),
     loadOwnerProperties(),
     loadOwnerAnalytics(),
     loadOwnerFinance(),
     loadOwnerLegal(),
   ]);
+  if (results.some((result) => result.status === "rejected")) {
+    notifyDashboardError("Some dashboard data could not be loaded. Please refresh.");
+  }
 }
 
 async function loadOwnerOverview() {
-  const dashboardRes = await fetch("/api/owner/dashboard");
-  const analyticsRes = await fetch("/api/owner/analytics");
+  const [dashboardRes, analyticsRes] = await Promise.all([
+    fetch("/api/owner/dashboard"),
+    fetch("/api/owner/analytics"),
+  ]);
   if (!dashboardRes.ok || !analyticsRes.ok) {
+    notifyDashboardError("Unable to load owner overview right now.");
     return;
   }
   const dashboard = await dashboardRes.json();
@@ -409,6 +426,7 @@ async function loadOwnerOverview() {
 async function loadOwnerProperties() {
   const res = await fetch("/api/owner/properties");
   if (!res.ok) {
+    notifyDashboardError("Unable to load your properties.");
     return;
   }
   const payload = await res.json();
@@ -455,6 +473,7 @@ async function loadOwnerProperties() {
 async function loadOwnerAnalytics() {
   const res = await fetch("/api/owner/analytics");
   if (!res.ok) {
+    notifyDashboardError("Unable to load analytics.");
     return;
   }
   const payload = await res.json();
@@ -485,6 +504,7 @@ async function loadOwnerAnalytics() {
 async function loadOwnerFinance() {
   const res = await fetch("/api/owner/finance");
   if (!res.ok) {
+    notifyDashboardError("Unable to load finance transactions.");
     return;
   }
   const payload = await res.json();
@@ -517,6 +537,7 @@ async function loadOwnerFinance() {
 async function loadOwnerLegal() {
   const res = await fetch("/api/owner/legal");
   if (!res.ok) {
+    notifyDashboardError("Unable to load tax and legal resources.");
     return;
   }
   const payload = await res.json();

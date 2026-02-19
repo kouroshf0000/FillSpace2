@@ -15,7 +15,13 @@ const tenantState = {
 };
 
 (async function initTenantDashboard() {
-  const authRes = await fetch("/api/auth/me");
+  let authRes;
+  try {
+    authRes = await fetch("/api/auth/me");
+  } catch {
+    window.location.href = "tenant-login.html?error=offline";
+    return;
+  }
   if (!authRes.ok) {
     window.location.href = "tenant-login.html";
     return;
@@ -199,7 +205,10 @@ function handleCheckoutReturnState() {
 }
 
 async function loadAllTenantData() {
-  await Promise.all([loadProperties(), loadReservationsAndFinance(), loadFavorites()]);
+  const results = await Promise.allSettled([loadProperties(), loadReservationsAndFinance(), loadFavorites()]);
+  if (results.some((result) => result.status === "rejected")) {
+    notifyTenantError("Some dashboard data could not be loaded. Please refresh.");
+  }
   renderMetrics();
   renderFinanceSummary();
   renderBookingPropertyOptions();
@@ -210,6 +219,7 @@ async function loadProperties() {
   const res = await fetch("/api/properties");
   if (!res.ok) {
     tenantState.properties = [];
+    notifyTenantError("Unable to load properties for browsing.");
     return;
   }
   const payload = await res.json();
@@ -226,6 +236,9 @@ async function loadReservationsAndFinance() {
     tenantState.reservationsUpcoming = payload.upcoming || [];
     tenantState.reservationsHistory = payload.history || [];
   }
+  if (!resList.ok) {
+    notifyTenantError("Unable to load reservations.");
+  }
   if (resDash.ok) {
     const payload = await resDash.json();
     tenantState.financeRows = payload.reservations || [];
@@ -238,6 +251,9 @@ async function loadReservationsAndFinance() {
       };
     }
   }
+  if (!resDash.ok) {
+    notifyTenantError("Unable to load finance summary.");
+  }
   renderReservationTables();
   renderFinanceTable();
   renderFinanceSummary();
@@ -247,6 +263,7 @@ async function loadFavorites() {
   const res = await fetch("/api/tenant/favorites");
   if (!res.ok) {
     tenantState.favorites = [];
+    notifyTenantError("Unable to load your watchlist right now.");
   } else {
     const payload = await res.json();
     tenantState.favorites = payload.favorites || [];
@@ -431,6 +448,11 @@ function setDashboardMessage(node, text, isError = false) {
   }
   node.textContent = text;
   node.classList.toggle("is-error", isError);
+}
+
+function notifyTenantError(text) {
+  const node = document.getElementById("tenant-booking-message");
+  setDashboardMessage(node, text, true);
 }
 
 function setText(id, value) {

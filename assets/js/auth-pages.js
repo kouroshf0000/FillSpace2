@@ -66,18 +66,22 @@
         role,
       };
       setMessage("Signing in...");
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMessage(data.error || "Unable to sign in.", true);
-        return;
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setMessage(data.error || "Unable to sign in.", true);
+          return;
+        }
+        setMessage("Login successful. Redirecting...");
+        window.location.href = dashboardPath;
+      } catch {
+        setMessage("Unable to reach the server. Start the app with npm run dev.", true);
       }
-      setMessage("Login successful. Redirecting...");
-      window.location.href = dashboardPath;
     });
   }
 
@@ -93,18 +97,22 @@
         password: String(formData.get("password") || ""),
       };
       setMessage("Creating account...");
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMessage(data.error || "Unable to create account.", true);
-        return;
+      try {
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setMessage(data.error || "Unable to create account.", true);
+          return;
+        }
+        setMessage("Account created. Redirecting...");
+        window.location.href = dashboardPath;
+      } catch {
+        setMessage("Unable to reach the server. Start the app with npm run dev.", true);
       }
-      setMessage("Account created. Redirecting...");
-      window.location.href = dashboardPath;
     });
   }
 
