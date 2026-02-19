@@ -78,6 +78,25 @@ db.exec(`
     FOREIGN KEY(tenant_id) REFERENCES users(id),
     FOREIGN KEY(property_id) REFERENCES properties(id)
   );
+
+  CREATE TABLE IF NOT EXISTS inquiries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    company TEXT NOT NULL DEFAULT '',
+    goal TEXT NOT NULL DEFAULT '',
+    timeline TEXT NOT NULL DEFAULT '',
+    budget TEXT NOT NULL DEFAULT '',
+    message TEXT NOT NULL,
+    property_interest TEXT NOT NULL DEFAULT '',
+    property_location TEXT NOT NULL DEFAULT '',
+    source TEXT NOT NULL DEFAULT 'website',
+    subject TEXT NOT NULL DEFAULT 'New FillSpace inquiry',
+    email_forwarded INTEGER NOT NULL DEFAULT 0,
+    forward_status TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 function slugify(input) {

@@ -59,11 +59,9 @@
           <form
             id="ask-info-form"
             class="ask-form"
-            action="https://formsubmit.co/kouroshf08@gmail.com"
-            method="POST"
+            method="post"
+            novalidate
           >
-            <input type="hidden" name="_captcha" value="false">
-            <input type="hidden" name="_template" value="table">
             <input type="hidden" name="_subject" id="ask-subject" value="New FillSpace inquiry">
             <input type="hidden" name="Source" id="ask-source" value="website">
 
@@ -110,10 +108,11 @@
             <label for="ask-message">Message</label>
             <textarea id="ask-message" name="Message" rows="5" placeholder="Tell us about your ideal size, use case, and preferred area." required></textarea>
 
-            <button class="btn btn-primary btn-block" type="submit">Send message</button>
+            <button class="btn btn-primary btn-block" id="ask-submit-btn" type="submit">Send message</button>
             <p class="form-note">
               Messages from this form are sent to <strong>hello@fillspace.com</strong>.
             </p>
+            <p id="ask-submit-status" class="form-note" role="status" aria-live="polite"></p>
           </form>
         </article>
 

@@ -979,6 +979,14 @@ textarea:focus {
   font-size: 0.84rem;
 }
 
+.form-note.is-success {
+  color: #1d5f2a;
+}
+
+.form-note.is-error {
+  color: #a72020;
+}
+
 .centered-card {
   max-width: 760px;
   margin: 3rem auto;

@@ -84,6 +84,7 @@ Seeded local demo users:
 - `POST /api/auth/login`
 - `POST /api/auth/logout`
 - `GET /api/auth/me`
+- `POST /api/inquiries`
 - `GET /api/properties`
 - `POST /api/owner/properties`
 - `GET /api/owner/dashboard`
@@ -97,5 +98,5 @@ Seeded local demo users:
 - Font stack includes Airbnb Cereal (`Airbnb Cereal App`) with system fallbacks.
 - Brand palette is matched to the deck PDF and centralized in `assets/css/style.css`.
 - Contact CTAs route users to `ask-info.html`.
-- Inquiry submissions post to `https://formsubmit.co/hello@fillspace.com`.
+- Ask-info submissions post to the backend `POST /api/inquiries`, are saved in SQLite, and attempt email forwarding via `INQUIRY_FORWARD_URL`.
 

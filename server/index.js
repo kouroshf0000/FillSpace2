@@ -27,6 +27,8 @@ const AUTH_COOKIE = "fillspace_auth";
 const PLATFORM_FEE_RATE = 0.12;
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
+const INQUIRY_FORWARD_URL = process.env.INQUIRY_FORWARD_URL || "https://formsubmit.co/kouroshf08@gmail.com";
+const INQUIRY_FORWARD_ENABLED = String(process.env.INQUIRY_FORWARD_ENABLED || "true").toLowerCase() !== "false";
 
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 
@@ -157,6 +159,20 @@ const reservationSchema = z.object({
 
 const propertyStatusSchema = z.object({
   status: z.enum(["active", "draft", "paused"]),
+});
+
+const inquirySchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.string().trim().email().max(180),
+  company: z.string().trim().max(160).optional().default(""),
+  goal: z.string().trim().min(2).max(80),
+  timeline: z.string().trim().min(2).max(80),
+  budget: z.string().trim().max(120).optional().default(""),
+  message: z.string().trim().min(8).max(4000),
+  property: z.string().trim().max(180).optional().default(""),
+  location: z.string().trim().max(180).optional().default(""),
+  source: z.string().trim().max(120).optional().default("website"),
+  subject: z.string().trim().max(200).optional().default("New FillSpace inquiry"),
 });
 
 app.use(cookieParser());
@@ -301,6 +317,96 @@ app.get("/api/auth/me", (req, res) => {
   }
   return res.json({ user: req.user });
 });
+
+app.post(
+  "/api/inquiries",
+  runAsync(async (req, res) => {
+    const parsed = inquirySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid inquiry payload." });
+    }
+
+    const data = parsed.data;
+    const insertResult = db.prepare(`
+      INSERT INTO inquiries (
+        name, email, company, goal, timeline, budget, message,
+        property_interest, property_location, source, subject
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      data.name,
+      data.email,
+      data.company || "",
+      data.goal,
+      data.timeline,
+      data.budget || "",
+      data.message,
+      data.property || "",
+      data.location || "",
+      data.source || "website",
+      data.subject || "New FillSpace inquiry"
+    );
+
+    const inquiryId = Number(insertResult.lastInsertRowid);
+    let forwarded = false;
+    let forwardStatus = "stored-only";
+
+    if (INQUIRY_FORWARD_ENABLED && INQUIRY_FORWARD_URL) {
+      try {
+        const payload = new URLSearchParams({
+          Name: data.name,
+          Email: data.email,
+          Company: data.company || "",
+          "Primary goal": data.goal,
+          Timeline: data.timeline,
+          "Estimated monthly budget": data.budget || "",
+          "Property of interest": data.property || "",
+          "Property location": data.location || "",
+          Source: data.source || "website",
+          Message: data.message,
+          _subject: data.subject || "New FillSpace inquiry",
+          _template: "table",
+          _captcha: "false",
+        });
+
+        const abortController = new AbortController();
+        const timeout = setTimeout(() => abortController.abort(), 8000);
+        const forwardRes = await fetch(INQUIRY_FORWARD_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: payload,
+          signal: abortController.signal,
+        });
+        clearTimeout(timeout);
+
+        if (forwardRes.ok) {
+          forwarded = true;
+          forwardStatus = "forwarded";
+        } else {
+          forwardStatus = `forward-http-${forwardRes.status}`;
+        }
+      } catch {
+        forwardStatus = "forward-failed";
+      }
+    }
+
+    db.prepare(`
+      UPDATE inquiries
+      SET email_forwarded = ?, forward_status = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(forwarded ? 1 : 0, forwardStatus, inquiryId);
+
+    const responseMessage = forwarded
+      ? "Complete. Your request has been sent."
+      : "Complete. Your request was saved and is queued for follow-up.";
+    return res.status(forwarded ? 201 : 202).json({
+      ok: true,
+      inquiry_id: inquiryId,
+      status: forwarded ? "complete" : "stored",
+      message: responseMessage,
+    });
+  })
+);
 
 app.get(
   "/api/properties",

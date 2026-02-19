@@ -84,6 +84,7 @@
   });
   initFeaturedPropertyLinks();
   initAskInfoFormPrefill();
+  initAskInfoFormSubmit();
   initScrollReveal();
 })();
 
@@ -633,6 +634,103 @@ function initAskInfoFormPrefill() {
   } else if (contextBadge instanceof HTMLElement) {
     contextBadge.textContent = "General inquiry";
   }
+}
+
+function initAskInfoFormSubmit() {
+  const form = document.getElementById("ask-info-form");
+  const submitButton = document.getElementById("ask-submit-btn");
+  const statusNode = document.getElementById("ask-submit-status");
+  if (!(form instanceof HTMLFormElement) || !(submitButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  const setStatus = (text, isError = false, isSuccess = false) => {
+    if (!(statusNode instanceof HTMLElement)) {
+      return;
+    }
+    statusNode.textContent = text;
+    statusNode.classList.toggle("is-error", isError);
+    statusNode.classList.toggle("is-success", isSuccess);
+  };
+
+  const readValue = (id) => {
+    const node = document.getElementById(id);
+    if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement || node instanceof HTMLSelectElement) {
+      return node.value.trim();
+    }
+    return "";
+  };
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.reportValidity()) {
+      return;
+    }
+
+    const payload = {
+      name: readValue("ask-name"),
+      email: readValue("ask-email"),
+      company: readValue("ask-company"),
+      goal: readValue("ask-goal"),
+      timeline: readValue("ask-timeline"),
+      budget: readValue("ask-budget"),
+      message: readValue("ask-message"),
+      property: readValue("ask-property-context"),
+      location: readValue("ask-location-context"),
+      source: readValue("ask-source") || "website",
+      subject: readValue("ask-subject") || "New FillSpace inquiry",
+    };
+
+    submitButton.disabled = true;
+    submitButton.textContent = "Sending...";
+    setStatus("Sending your request...");
+
+    try {
+      const res = await fetch("/api/inquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setStatus(data.error || "Unable to submit your request right now.", true, false);
+        submitButton.disabled = false;
+        submitButton.textContent = "Send message";
+        return;
+      }
+
+      setStatus(data.message || "Complete. Your request has been sent.", false, true);
+      submitButton.textContent = "Complete";
+
+      const resetIds = [
+        "ask-name",
+        "ask-email",
+        "ask-company",
+        "ask-goal",
+        "ask-timeline",
+        "ask-budget",
+        "ask-message",
+      ];
+      resetIds.forEach((id) => {
+        const node = document.getElementById(id);
+        if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) {
+          node.value = "";
+        }
+        if (node instanceof HTMLSelectElement) {
+          node.selectedIndex = 0;
+        }
+      });
+
+      setTimeout(() => {
+        submitButton.disabled = false;
+        submitButton.textContent = "Send message";
+      }, 2000);
+    } catch {
+      setStatus("Unable to reach server. Please try again in a moment.", true, false);
+      submitButton.disabled = false;
+      submitButton.textContent = "Send message";
+    }
+  });
 }
 
 function escapeHtml(value) {
