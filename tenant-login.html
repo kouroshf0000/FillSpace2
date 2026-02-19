@@ -29,10 +29,10 @@
 
         <form id="login-form" class="auth-form" data-auth-section="login">
           <label for="tenant-login-email">Email</label>
-          <input id="tenant-login-email" name="email" type="email" required>
+          <input id="tenant-login-email" name="email" type="email" autocomplete="email" required>
 
           <label for="tenant-login-password">Password</label>
-          <input id="tenant-login-password" name="password" type="password" required>
+          <input id="tenant-login-password" name="password" type="password" autocomplete="current-password" required>
 
           <button class="btn btn-primary btn-block" type="submit">Sign in as tenant</button>
           <p class="auth-help">Demo account: <strong>tenant@fillspace.com</strong> / <strong>Tenant123!</strong></p>
@@ -40,16 +40,16 @@
 
         <form id="register-form" class="auth-form is-hidden" data-auth-section="register">
           <label for="tenant-register-name">Full name</label>
-          <input id="tenant-register-name" name="name" type="text" required>
+          <input id="tenant-register-name" name="name" type="text" autocomplete="name" required>
 
           <label for="tenant-register-company">Company / brand</label>
-          <input id="tenant-register-company" name="company" type="text">
+          <input id="tenant-register-company" name="company" type="text" autocomplete="organization">
 
           <label for="tenant-register-email">Email</label>
-          <input id="tenant-register-email" name="email" type="email" required>
+          <input id="tenant-register-email" name="email" type="email" autocomplete="email" required>
 
           <label for="tenant-register-password">Password</label>
-          <input id="tenant-register-password" name="password" type="password" minlength="8" required>
+          <input id="tenant-register-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
 
           <button class="btn btn-primary btn-block" type="submit">Create tenant account</button>
         </form>

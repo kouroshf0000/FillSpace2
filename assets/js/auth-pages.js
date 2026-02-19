@@ -75,13 +75,19 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setMessage(data.error || "Unable to sign in.", true);
+          setMessage(
+            friendlyErrorMessage(
+              data.error,
+              "We couldn't sign you in. Please check your details and try again."
+            ),
+            true
+          );
           return;
         }
         setMessage("Login successful. Redirecting...");
         window.location.href = dashboardPath;
       } catch {
-        setMessage("Unable to reach the server. Start the app with npm run dev.", true);
+        setMessage("We couldn't reach the server. Please check your connection and try again.", true);
       }
     });
   }
@@ -106,13 +112,19 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setMessage(data.error || "Unable to create account.", true);
+          setMessage(
+            friendlyErrorMessage(
+              data.error,
+              "We couldn't create your account. Please review your details and try again."
+            ),
+            true
+          );
           return;
         }
         setMessage("Account created. Redirecting...");
         window.location.href = dashboardPath;
       } catch {
-        setMessage("Unable to reach the server. Start the app with npm run dev.", true);
+        setMessage("We couldn't reach the server. Please check your connection and try again.", true);
       }
     });
   }
@@ -120,12 +132,29 @@
   setActiveTab("login");
 
   if (window.location.protocol === "file:") {
-    setMessage("Open this app at http://localhost:4173 (not file://). Run: npm run dev", true);
+    setMessage("Please open this site through the FillSpace server, not as a local file.", true);
     return;
   }
 
   if (params.get("error") === "offline") {
-    setMessage("Server is offline. Start it with npm run dev, then refresh this page.", true);
+    setMessage("The service is currently unavailable. Please try again in a moment.", true);
   }
 })();
+
+function friendlyErrorMessage(rawMessage, fallbackMessage) {
+  const message = String(rawMessage || "").trim();
+  if (!message) {
+    return fallbackMessage;
+  }
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("invalid payload") ||
+    lower.includes("invalid input") ||
+    lower.includes("expected ") ||
+    lower.includes("api route")
+  ) {
+    return fallbackMessage;
+  }
+  return message;
+}
 

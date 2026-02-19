@@ -136,12 +136,19 @@ function wireConnectStripe() {
       });
       const payload = await res.json();
       if (!res.ok) {
-        alert(payload.error || "Unable to start Stripe onboarding.");
+        alert(
+          friendlyErrorMessage(
+            payload.error,
+            "We couldn't start payout setup right now. Please try again in a moment."
+          )
+        );
         return;
       }
       if (payload.onboarding_url) {
         window.location.href = payload.onboarding_url;
       }
+    } catch {
+      alert("We couldn't reach Stripe setup right now. Please try again.");
     } finally {
       button.disabled = false;
       button.textContent = "Connect Stripe";
@@ -169,6 +176,7 @@ function wirePropertyForm() {
     event.preventDefault();
     const formData = new FormData(form);
     const payload = formPayloadFromData(formData);
+    const submitButton = document.getElementById("owner-property-submit");
     const isEditing = Number.isFinite(ownerState.editingPropertyId);
     const editingProperty = isEditing
       ? ownerState.properties.find((item) => item.id === ownerState.editingPropertyId)
@@ -178,7 +186,7 @@ function wirePropertyForm() {
     payload.status = editingProperty?.status || "active";
 
     if (payload.max_term_months < payload.min_term_months) {
-      setDashboardMessage(message, "Max term must be greater than or equal to min term.", true);
+      setDashboardMessage(message, "Maximum term must be the same as or longer than minimum term.", true);
       return;
     }
 
@@ -188,27 +196,42 @@ function wirePropertyForm() {
     const method = isEditing ? "PUT" : "POST";
 
     setDashboardMessage(message, isEditing ? "Saving property updates..." : "Saving listing...");
-    const res = await fetch(endpoint, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      setDashboardMessage(message, data.error || "Could not save listing.", true);
-      return;
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.disabled = true;
     }
+    try {
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
 
-    resetPropertyForm(form);
-    setPropertyFormMode(null);
-    setDashboardMessage(
-      message,
-      isEditing
-        ? "Property updated. Browse listings reflect the latest changes."
-        : "Property added. It is now available in browse results."
-    );
-    await loadAllDashboardData();
+      if (!res.ok) {
+        setDashboardMessage(
+          message,
+          friendlyErrorMessage(data.error, "We couldn't save this listing. Please try again."),
+          true
+        );
+        return;
+      }
+
+      resetPropertyForm(form);
+      setPropertyFormMode(null);
+      setDashboardMessage(
+        message,
+        isEditing
+          ? "Property updated. Browse listings reflect the latest changes."
+          : "Property added. It is now available in browse results."
+      );
+      await loadAllDashboardData();
+    } catch {
+      setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
+    } finally {
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = false;
+      }
+    }
   });
 }
 
@@ -257,18 +280,26 @@ function wirePropertyTableActions() {
       }
       const nextStatus = property.status === "active" ? "paused" : "active";
       setDashboardMessage(message, `Updating ${property.title} status...`);
-      const res = await fetch(`/api/owner/properties/${propertyId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setDashboardMessage(message, data.error || "Could not update listing status.", true);
-        return;
+      try {
+        const res = await fetch(`/api/owner/properties/${propertyId}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: nextStatus }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setDashboardMessage(
+            message,
+            friendlyErrorMessage(data.error, "We couldn't update this listing right now."),
+            true
+          );
+          return;
+        }
+        setDashboardMessage(message, `${property.title} is now ${nextStatus}.`);
+        await loadAllDashboardData();
+      } catch {
+        setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
       }
-      setDashboardMessage(message, `${property.title} is now ${nextStatus}.`);
-      await loadAllDashboardData();
       return;
     }
 
@@ -285,21 +316,29 @@ function wirePropertyTableActions() {
       }
 
       setDashboardMessage(message, `Deleting ${property.title}...`);
-      const res = await fetch(`/api/owner/properties/${propertyId}`, {
-        method: "DELETE",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setDashboardMessage(message, data.error || "Could not delete listing.", true);
-        return;
-      }
+      try {
+        const res = await fetch(`/api/owner/properties/${propertyId}`, {
+          method: "DELETE",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setDashboardMessage(
+            message,
+            friendlyErrorMessage(data.error, "We couldn't delete this listing right now."),
+            true
+          );
+          return;
+        }
 
-      if (ownerState.editingPropertyId === propertyId) {
-        resetPropertyForm(form);
-        setPropertyFormMode(null);
+        if (ownerState.editingPropertyId === propertyId) {
+          resetPropertyForm(form);
+          setPropertyFormMode(null);
+        }
+        setDashboardMessage(message, `${property.title} deleted.`);
+        await loadAllDashboardData();
+      } catch {
+        setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
       }
-      setDashboardMessage(message, `${property.title} deleted.`);
-      await loadAllDashboardData();
     }
   });
 }
@@ -627,8 +666,25 @@ function formatStatus(status) {
 
 function statusBadge(status) {
   const raw = String(status || "").toLowerCase().replace(/_/g, "-");
-  const label = String(status || "").replace(/_/g, " ").replace(/\w/g, (c) => c.toUpperCase());
+  const label = String(status || "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   return `<span class="status-badge is-${escapeHtml(raw)}">${escapeHtml(label)}</span>`;
+}
+
+function friendlyErrorMessage(rawMessage, fallbackMessage) {
+  const message = String(rawMessage || "").trim();
+  if (!message) {
+    return fallbackMessage;
+  }
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("invalid payload") ||
+    lower.includes("invalid input") ||
+    lower.includes("expected ") ||
+    lower.includes("api route")
+  ) {
+    return fallbackMessage;
+  }
+  return message;
 }
 
 function escapeHtml(value) {

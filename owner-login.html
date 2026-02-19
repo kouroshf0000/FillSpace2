@@ -29,10 +29,10 @@
 
         <form id="login-form" class="auth-form" data-auth-section="login">
           <label for="owner-login-email">Email</label>
-          <input id="owner-login-email" name="email" type="email" required>
+          <input id="owner-login-email" name="email" type="email" autocomplete="email" required>
 
           <label for="owner-login-password">Password</label>
-          <input id="owner-login-password" name="password" type="password" required>
+          <input id="owner-login-password" name="password" type="password" autocomplete="current-password" required>
 
           <button class="btn btn-primary btn-block" type="submit">Sign in as owner</button>
           <p class="auth-help">Demo account: <strong>owner@fillspace.com</strong> / <strong>Owner123!</strong></p>
@@ -40,16 +40,16 @@
 
         <form id="register-form" class="auth-form is-hidden" data-auth-section="register">
           <label for="owner-register-name">Full name</label>
-          <input id="owner-register-name" name="name" type="text" required>
+          <input id="owner-register-name" name="name" type="text" autocomplete="name" required>
 
           <label for="owner-register-company">Company</label>
-          <input id="owner-register-company" name="company" type="text">
+          <input id="owner-register-company" name="company" type="text" autocomplete="organization">
 
           <label for="owner-register-email">Email</label>
-          <input id="owner-register-email" name="email" type="email" required>
+          <input id="owner-register-email" name="email" type="email" autocomplete="email" required>
 
           <label for="owner-register-password">Password</label>
-          <input id="owner-register-password" name="password" type="password" minlength="8" required>
+          <input id="owner-register-password" name="password" type="password" autocomplete="new-password" minlength="8" required>
 
           <button class="btn btn-primary btn-block" type="submit">Create owner account</button>
         </form>

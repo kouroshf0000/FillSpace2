@@ -38,6 +38,7 @@ const SMTP_PASS = process.env.SMTP_PASS || "";
 const INQUIRY_EMAIL_FROM = process.env.INQUIRY_EMAIL_FROM || SMTP_USER || "no-reply@fillspace.local";
 const INQUIRY_EMAIL_TO = process.env.INQUIRY_EMAIL_TO || "kouroshf08@gmail.com";
 const LISTING_NOTIFY_EMAIL_TO = process.env.LISTING_NOTIFY_EMAIL_TO || INQUIRY_EMAIL_TO;
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 const inquiryMailer =
@@ -67,7 +68,7 @@ function issueAuthCookie(res, user) {
   res.cookie(AUTH_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: IS_PRODUCTION,
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 }
@@ -76,7 +77,7 @@ function clearAuthCookie(res) {
   res.clearCookie(AUTH_COOKIE, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: IS_PRODUCTION,
   });
 }
 
@@ -99,7 +100,7 @@ function getCurrentUserFromCookie(req) {
 
 function requireAuth(req, res, next) {
   if (!req.user) {
-    return res.status(401).json({ error: "Authentication required." });
+    return res.status(401).json({ error: "Please sign in to continue." });
   }
   return next();
 }
@@ -107,10 +108,10 @@ function requireAuth(req, res, next) {
 function requireRole(role) {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ error: "Authentication required." });
+      return res.status(401).json({ error: "Please sign in to continue." });
     }
     if (req.user.role !== role) {
-      return res.status(403).json({ error: `Only ${role} users can access this resource.` });
+      return res.status(403).json({ error: `This action is only available to ${role} accounts.` });
     }
     return next();
   };
@@ -126,7 +127,7 @@ function calculateDurationInMonths(startDate, endDate) {
   const start = new Date(startDate);
   const end = new Date(endDate);
   if (Number.isNaN(start.valueOf()) || Number.isNaN(end.valueOf()) || end <= start) {
-    throw new Error("Invalid reservation dates.");
+    return null;
   }
   const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
   return Math.max(1, Math.ceil(totalDays / 30));
@@ -200,61 +201,218 @@ async function sendOwnerListingNotification(owner, property) {
   return true;
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const ROLE_OPTIONS = new Set(["owner", "tenant"]);
+const PROPERTY_STATUS_OPTIONS = new Set(["active", "draft", "paused"]);
+const FIELD_LABELS = {
+  name: "your name",
+  company: "company name",
+  email: "an email address",
+  password: "a password",
+  role: "an account type",
+  title: "a property title",
+  description: "a description",
+  location: "a location",
+  city: "a city",
+  state: "a state",
+  size_sqft: "the size in square feet",
+  monthly_price: "the monthly rent",
+  min_term_months: "the minimum term",
+  max_term_months: "the maximum term",
+  availability_text: "availability details",
+  best_for: "best-for details",
+  utilities: "utility details",
+  buildout: "buildout details",
+  image_url: "a photo URL",
+  amenities: "valid amenities",
+  propertyId: "a property",
+  startDate: "a start date",
+  endDate: "an end date",
+  goal: "a primary goal",
+  timeline: "a timeline",
+  budget: "a budget",
+  message: "a message",
+  property: "a property",
+  source: "a source",
+  subject: "a subject",
+  status: "a status",
+};
+
+function isValidHttpUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function formatValidationError(zodError, fallbackMessage = "Please review your entries and try again.") {
+  const issue = zodError?.issues?.[0];
+  if (!issue) {
+    return fallbackMessage;
+  }
+
+  const field = Array.isArray(issue.path) && issue.path.length ? String(issue.path[0]) : "";
+  const fieldLabel = FIELD_LABELS[field] || "this field";
+
+  if (issue.code === "invalid_type") {
+    if (issue.input === undefined || issue.received === "undefined") {
+      return `Please enter ${fieldLabel}.`;
+    }
+    return `Please check ${fieldLabel} and try again.`;
+  }
+
+  if (issue.code === "too_small") {
+    if (issue.minimum === 1) {
+      return `Please enter ${fieldLabel}.`;
+    }
+    return `Please check ${fieldLabel} and try again.`;
+  }
+
+  if (issue.code === "invalid_enum_value" || issue.code === "invalid_value") {
+    return `Please choose a valid value for ${fieldLabel}.`;
+  }
+
+  if (issue.code === "invalid_format") {
+    if (issue.format === "email") {
+      return "Please enter a valid email address.";
+    }
+    if (issue.format === "url") {
+      return "Please enter a valid URL that starts with http:// or https://.";
+    }
+    return `Please enter a valid value for ${fieldLabel}.`;
+  }
+
+  if (typeof issue.message === "string" && issue.message.trim()) {
+    return issue.message;
+  }
+
+  return fallbackMessage;
+}
+
 const authInputSchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  company: z.string().trim().max(120).optional().default(""),
-  email: z.string().trim().email().max(180),
-  password: z.string().min(8).max(120),
-  role: z.enum(["owner", "tenant"]),
+  name: z.string().trim().min(1, { message: "Please enter your full name." }),
+  company: z.string().trim().optional().default(""),
+  email: z
+    .string()
+    .trim()
+    .min(1, { message: "Please enter your email address." })
+    .refine((value) => EMAIL_PATTERN.test(value), { message: "Please enter a valid email address." }),
+  password: z
+    .string()
+    .min(1, { message: "Please enter a password." })
+    .min(8, { message: "Password must be at least 8 characters." }),
+  role: z.string().trim().refine((value) => ROLE_OPTIONS.has(value), {
+    message: "Please choose either owner or tenant.",
+  }),
 });
 
 const loginSchema = z.object({
-  email: z.string().trim().email().max(180),
-  password: z.string().min(1).max(120),
-  role: z.enum(["owner", "tenant"]).optional(),
+  email: z
+    .string()
+    .trim()
+    .min(1, { message: "Please enter your email address." })
+    .refine((value) => EMAIL_PATTERN.test(value), { message: "Please enter a valid email address." }),
+  password: z.string().min(1, { message: "Please enter your password." }),
+  role: z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => !value || ROLE_OPTIONS.has(value), {
+      message: "Please choose either owner or tenant.",
+    }),
 });
 
 const propertySchema = z.object({
-  title: z.string().trim().min(4).max(120),
-  description: z.string().trim().min(20).max(2500),
-  location: z.string().trim().min(4).max(180),
-  city: z.string().trim().max(80).optional().default(""),
-  state: z.string().trim().max(30).optional().default(""),
-  size_sqft: z.coerce.number().int().min(100).max(100000),
-  monthly_price: z.coerce.number().min(100).max(1000000),
-  min_term_months: z.coerce.number().int().min(1).max(24),
-  max_term_months: z.coerce.number().int().min(1).max(24),
-  availability_text: z.string().trim().max(120).optional().default("Available now"),
-  best_for: z.string().trim().max(160).optional().default(""),
-  utilities: z.string().trim().max(200).optional().default(""),
-  buildout: z.string().trim().max(200).optional().default(""),
-  image_url: z.string().trim().url().or(z.literal("")).optional().default(""),
-  status: z.enum(["active", "draft", "paused"]).optional().default("active"),
-  amenities: z.array(z.string().trim().min(2).max(40)).max(12).optional().default([]),
+  title: z.string().trim().min(1, { message: "Please enter a property title." }),
+  description: z.string().trim().min(1, { message: "Please add a property description." }),
+  location: z.string().trim().min(1, { message: "Please enter the property location." }),
+  city: z.string().trim().optional().default(""),
+  state: z.string().trim().optional().default(""),
+  size_sqft: z
+    .coerce
+    .number()
+    .int({ message: "Please enter a whole number for size." })
+    .min(100, { message: "Size must be at least 100 sq ft." })
+    .max(100000, { message: "Size looks too large. Please check it and try again." }),
+  monthly_price: z
+    .coerce
+    .number()
+    .min(100, { message: "Monthly rent must be at least $100." })
+    .max(1000000, { message: "Monthly rent looks too high. Please check it and try again." }),
+  min_term_months: z
+    .coerce
+    .number()
+    .int({ message: "Minimum term must be a whole number of months." })
+    .min(1, { message: "Minimum term must be at least 1 month." })
+    .max(24, { message: "Minimum term cannot be longer than 24 months." }),
+  max_term_months: z
+    .coerce
+    .number()
+    .int({ message: "Maximum term must be a whole number of months." })
+    .min(1, { message: "Maximum term must be at least 1 month." })
+    .max(24, { message: "Maximum term cannot be longer than 24 months." }),
+  availability_text: z.string().trim().optional().default("Available now"),
+  best_for: z.string().trim().optional().default(""),
+  utilities: z.string().trim().optional().default(""),
+  buildout: z.string().trim().optional().default(""),
+  image_url: z
+    .string()
+    .trim()
+    .optional()
+    .default("")
+    .refine((value) => !value || isValidHttpUrl(value), {
+      message: "Please enter a valid photo URL, or leave it blank.",
+    }),
+  status: z
+    .string()
+    .trim()
+    .optional()
+    .default("active")
+    .refine((value) => PROPERTY_STATUS_OPTIONS.has(value), {
+      message: "Please choose a valid listing status.",
+    }),
+  amenities: z.array(z.string().trim().min(1, { message: "Please choose valid amenities." })).optional().default([]),
 });
 
 const reservationSchema = z.object({
-  propertyId: z.coerce.number().int().positive(),
-  startDate: z.string().trim().min(10),
-  endDate: z.string().trim().min(10),
+  propertyId: z
+    .coerce
+    .number()
+    .int({ message: "Please choose a property." })
+    .min(1, { message: "Please choose a property." }),
+  startDate: z.string().trim().regex(ISO_DATE_PATTERN, {
+    message: "Please choose a valid start date.",
+  }),
+  endDate: z.string().trim().regex(ISO_DATE_PATTERN, {
+    message: "Please choose a valid end date.",
+  }),
 });
 
 const propertyStatusSchema = z.object({
-  status: z.enum(["active", "draft", "paused"]),
+  status: z.string().trim().refine((value) => PROPERTY_STATUS_OPTIONS.has(value), {
+    message: "Please choose a valid listing status.",
+  }),
 });
 
 const inquirySchema = z.object({
-  name: z.string().trim().min(2).max(120),
-  email: z.string().trim().email().max(180),
-  company: z.string().trim().max(160).optional().default(""),
-  goal: z.string().trim().min(2).max(80),
-  timeline: z.string().trim().min(2).max(80),
-  budget: z.string().trim().max(120).optional().default(""),
-  message: z.string().trim().min(8).max(4000),
-  property: z.string().trim().max(180).optional().default(""),
-  location: z.string().trim().max(180).optional().default(""),
-  source: z.string().trim().max(120).optional().default("website"),
-  subject: z.string().trim().max(200).optional().default("New FillSpace inquiry"),
+  name: z.string().trim().min(1, { message: "Please enter your name." }),
+  email: z
+    .string()
+    .trim()
+    .min(1, { message: "Please enter your email address." })
+    .refine((value) => EMAIL_PATTERN.test(value), { message: "Please enter a valid email address." }),
+  company: z.string().trim().optional().default(""),
+  goal: z.string().trim().min(1, { message: "Please choose your primary goal." }),
+  timeline: z.string().trim().min(1, { message: "Please choose your timeline." }),
+  budget: z.string().trim().optional().default(""),
+  message: z.string().trim().min(1, { message: "Please enter your message." }),
+  property: z.string().trim().optional().default(""),
+  location: z.string().trim().optional().default(""),
+  source: z.string().trim().optional().default("website"),
+  subject: z.string().trim().optional().default("New FillSpace inquiry"),
 });
 
 app.use(cookieParser());
@@ -264,7 +422,7 @@ app.post(
   express.raw({ type: "application/json" }),
   runAsync(async (req, res) => {
     if (!stripe) {
-      return res.status(501).json({ error: "Stripe is not configured on this server." });
+      return res.status(501).json({ error: "Payment webhooks are unavailable right now." });
     }
 
     let event;
@@ -273,7 +431,7 @@ app.post(
       try {
         event = stripe.webhooks.constructEvent(req.body, signature, STRIPE_WEBHOOK_SECRET);
       } catch (error) {
-        return res.status(400).json({ error: `Webhook signature verification failed: ${error.message}` });
+        return res.status(400).json({ error: "Webhook signature could not be verified." });
       }
     } else {
       event = JSON.parse(req.body.toString("utf8"));
@@ -334,13 +492,15 @@ app.post(
   runAsync(async (req, res) => {
     const parsed = authInputSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid input." });
+      return res.status(400).json({
+        error: formatValidationError(parsed.error, "Please check your registration details and try again."),
+      });
     }
 
     const data = parsed.data;
     const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(data.email);
     if (existing) {
-      return res.status(409).json({ error: "Email already in use." });
+      return res.status(409).json({ error: "That email is already in use. Try signing in instead." });
     }
 
     const passwordHash = await bcrypt.hash(data.password, 10);
@@ -365,22 +525,24 @@ app.post(
   runAsync(async (req, res) => {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid input." });
+      return res.status(400).json({
+        error: formatValidationError(parsed.error, "Please enter your email and password to sign in."),
+      });
     }
 
     const data = parsed.data;
     const userRow = db.prepare("SELECT * FROM users WHERE email = ?").get(data.email);
     if (!userRow) {
-      return res.status(401).json({ error: "Invalid credentials." });
+      return res.status(401).json({ error: "Email or password is incorrect." });
     }
 
     if (data.role && userRow.role !== data.role) {
-      return res.status(403).json({ error: `This account is not a ${data.role}.` });
+      return res.status(403).json({ error: `Please use the ${userRow.role} login for this account.` });
     }
 
     const passwordOk = await bcrypt.compare(data.password, userRow.password_hash);
     if (!passwordOk) {
-      return res.status(401).json({ error: "Invalid credentials." });
+      return res.status(401).json({ error: "Email or password is incorrect." });
     }
 
     const user = sanitizeUser(userRow);
@@ -406,7 +568,9 @@ app.post(
   runAsync(async (req, res) => {
     const parsed = inquirySchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid inquiry payload." });
+      return res.status(400).json({
+        error: formatValidationError(parsed.error, "Please review your message and try again."),
+      });
     }
 
     const data = parsed.data;
@@ -536,7 +700,7 @@ app.get(
       : db.prepare("SELECT * FROM properties WHERE slug = ?").get(rawId);
 
     if (!row) {
-      return res.status(404).json({ error: "Property not found." });
+      return res.status(404).json({ error: "We couldn't find that property." });
     }
     return res.json({ property: normalizePropertyRow(row) });
   })
@@ -559,12 +723,16 @@ app.post(
   runAsync(async (req, res) => {
     const parsed = propertySchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid property payload." });
+      return res.status(400).json({
+        error: formatValidationError(parsed.error, "Please review the property details and try again."),
+      });
     }
     const data = parsed.data;
 
     if (data.max_term_months < data.min_term_months) {
-      return res.status(400).json({ error: "Max term must be greater than or equal to min term." });
+      return res.status(400).json({
+        error: "Maximum term must be the same as or longer than the minimum term.",
+      });
     }
 
     let slug = slugify(data.title);
@@ -624,22 +792,26 @@ app.put(
   runAsync(async (req, res) => {
     const propertyId = Number(req.params.id);
     if (!Number.isFinite(propertyId)) {
-      return res.status(400).json({ error: "Invalid property id." });
+      return res.status(400).json({ error: "We couldn't identify that listing. Please refresh and try again." });
     }
 
     const existing = db.prepare("SELECT * FROM properties WHERE id = ? AND owner_id = ?").get(propertyId, req.user.id);
     if (!existing) {
-      return res.status(404).json({ error: "Property not found for this owner." });
+      return res.status(404).json({ error: "We couldn't find that listing in your account." });
     }
 
     const parsed = propertySchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid property payload." });
+      return res.status(400).json({
+        error: formatValidationError(parsed.error, "Please review the property details and try again."),
+      });
     }
     const data = parsed.data;
 
     if (data.max_term_months < data.min_term_months) {
-      return res.status(400).json({ error: "Max term must be greater than or equal to min term." });
+      return res.status(400).json({
+        error: "Maximum term must be the same as or longer than the minimum term.",
+      });
     }
 
     db.prepare(`
@@ -695,17 +867,19 @@ app.patch(
   runAsync(async (req, res) => {
     const propertyId = Number(req.params.id);
     if (!Number.isFinite(propertyId)) {
-      return res.status(400).json({ error: "Invalid property id." });
+      return res.status(400).json({ error: "We couldn't identify that listing. Please refresh and try again." });
     }
 
     const parsed = propertyStatusSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid status payload." });
+      return res.status(400).json({
+        error: formatValidationError(parsed.error, "Please choose a valid listing status."),
+      });
     }
 
     const existing = db.prepare("SELECT * FROM properties WHERE id = ? AND owner_id = ?").get(propertyId, req.user.id);
     if (!existing) {
-      return res.status(404).json({ error: "Property not found for this owner." });
+      return res.status(404).json({ error: "We couldn't find that listing in your account." });
     }
 
     db.prepare(`
@@ -725,12 +899,12 @@ app.delete(
   runAsync(async (req, res) => {
     const propertyId = Number(req.params.id);
     if (!Number.isFinite(propertyId)) {
-      return res.status(400).json({ error: "Invalid property id." });
+      return res.status(400).json({ error: "We couldn't identify that listing. Please refresh and try again." });
     }
 
     const existing = db.prepare("SELECT * FROM properties WHERE id = ? AND owner_id = ?").get(propertyId, req.user.id);
     if (!existing) {
-      return res.status(404).json({ error: "Property not found for this owner." });
+      return res.status(404).json({ error: "We couldn't find that listing in your account." });
     }
 
     const reservationCount = db
@@ -905,7 +1079,7 @@ app.post(
   runAsync(async (req, res) => {
     if (!stripe) {
       return res.status(501).json({
-        error: "Stripe is not configured. Add STRIPE_SECRET_KEY in your environment.",
+        error: "Payout setup is temporarily unavailable. Please try again later.",
       });
     }
 
@@ -1010,11 +1184,11 @@ app.post(
   runAsync(async (req, res) => {
     const propertyId = Number(req.params.propertyId);
     if (!Number.isFinite(propertyId)) {
-      return res.status(400).json({ error: "Invalid property id." });
+      return res.status(400).json({ error: "We couldn't identify that property. Please refresh and try again." });
     }
     const property = db.prepare("SELECT id FROM properties WHERE id = ? AND status = 'active'").get(propertyId);
     if (!property) {
-      return res.status(404).json({ error: "Property not found." });
+      return res.status(404).json({ error: "We couldn't find that property." });
     }
 
     db.prepare(`
@@ -1032,7 +1206,7 @@ app.delete(
   runAsync(async (req, res) => {
     const propertyId = Number(req.params.propertyId);
     if (!Number.isFinite(propertyId)) {
-      return res.status(400).json({ error: "Invalid property id." });
+      return res.status(400).json({ error: "We couldn't identify that property. Please refresh and try again." });
     }
 
     db.prepare("DELETE FROM favorites WHERE tenant_id = ? AND property_id = ?").run(req.user.id, propertyId);
@@ -1140,36 +1314,40 @@ app.post(
   runAsync(async (req, res) => {
     if (!stripe) {
       return res.status(501).json({
-        error:
-          "Stripe is not configured. Add STRIPE_SECRET_KEY to enable marketplace checkout and owner payouts.",
+        error: "Online checkout is temporarily unavailable. Please try again later.",
       });
     }
 
     const parsed = reservationSchema.safeParse(req.body);
     if (!parsed.success) {
-      return res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid reservation payload." });
+      return res.status(400).json({
+        error: formatValidationError(parsed.error, "Please review your booking details and try again."),
+      });
     }
     const data = parsed.data;
 
     const property = db.prepare("SELECT * FROM properties WHERE id = ? AND status = 'active'").get(data.propertyId);
     if (!property) {
-      return res.status(404).json({ error: "Property not found." });
+      return res.status(404).json({ error: "We couldn't find that property." });
     }
     if (property.owner_id === req.user.id) {
-      return res.status(400).json({ error: "Owners cannot reserve their own listings." });
+      return res.status(400).json({ error: "You can't book your own listing." });
     }
 
     const owner = db.prepare("SELECT id, email, stripe_account_id FROM users WHERE id = ?").get(property.owner_id);
     if (!owner?.stripe_account_id) {
       return res.status(409).json({
-        error: "Owner has not connected Stripe payouts yet.",
+        error: "This listing is not ready for checkout yet. Please try another listing.",
       });
     }
 
     const durationMonths = calculateDurationInMonths(data.startDate, data.endDate);
+    if (!durationMonths) {
+      return res.status(400).json({ error: "Please choose an end date that is after the start date." });
+    }
     if (durationMonths < property.min_term_months || durationMonths > property.max_term_months) {
       return res.status(400).json({
-        error: `Reservation term must be between ${property.min_term_months} and ${property.max_term_months} months.`,
+        error: `Please choose dates that create a term between ${property.min_term_months} and ${property.max_term_months} months.`,
       });
     }
 
@@ -1258,15 +1436,18 @@ app.get(
     const endDate = String(req.query.endDate || "");
 
     if (!Number.isFinite(propertyId) || !startDate || !endDate) {
-      return res.status(400).json({ error: "propertyId, startDate, and endDate are required." });
+      return res.status(400).json({ error: "Please choose a property, start date, and end date." });
     }
 
     const property = db.prepare("SELECT * FROM properties WHERE id = ?").get(propertyId);
     if (!property) {
-      return res.status(404).json({ error: "Property not found." });
+      return res.status(404).json({ error: "We couldn't find that property." });
     }
 
     const months = calculateDurationInMonths(startDate, endDate);
+    if (!months) {
+      return res.status(400).json({ error: "Please choose an end date that is after the start date." });
+    }
     const totalCents = property.monthly_price_cents * months;
     const platformFeeCents = Math.round(totalCents * PLATFORM_FEE_RATE);
     const ownerPayoutCents = totalCents - platformFeeCents;
@@ -1325,7 +1506,7 @@ app.use(express.static(path.join(__dirname, "..")));
 
 app.use((error, _req, res, _next) => {
   console.error(error);
-  res.status(500).json({ error: "Unexpected server error." });
+  res.status(500).json({ error: "Something went wrong on our side. Please try again." });
 });
 
 app.listen(PORT, () => {

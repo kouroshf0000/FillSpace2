@@ -13,6 +13,8 @@ const tenantState = {
     tax_year: new Date().getFullYear(),
   },
 };
+const FALLBACK_PROPERTY_IMAGE =
+  "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80";
 
 (async function initTenantDashboard() {
   let authRes;
@@ -119,6 +121,13 @@ function wireBookingForm() {
   if (!(form instanceof HTMLFormElement)) {
     return;
   }
+  const today = new Date().toISOString().slice(0, 10);
+  if (startInput instanceof HTMLInputElement) {
+    startInput.min = today;
+  }
+  if (endInput instanceof HTMLInputElement) {
+    endInput.min = today;
+  }
 
   const updateQuote = async () => {
     if (!(propertySelect instanceof HTMLSelectElement)) {
@@ -133,21 +142,36 @@ function wireBookingForm() {
       }
       return;
     }
+    if (endDate <= startDate) {
+      if (quoteText instanceof HTMLElement) {
+        quoteText.textContent = "End date must be after start date.";
+      }
+      return;
+    }
     const params = new URLSearchParams({
       propertyId: String(propertyId),
       startDate,
       endDate,
     });
-    const res = await fetch(`/api/payments/quote?${params.toString()}`);
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      if (quoteText instanceof HTMLElement) {
-        quoteText.textContent = payload.error || "Unable to quote this reservation.";
+    try {
+      const res = await fetch(`/api/payments/quote?${params.toString()}`);
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (quoteText instanceof HTMLElement) {
+          quoteText.textContent = friendlyErrorMessage(
+            payload.error,
+            "We couldn't preview pricing for those dates."
+          );
+        }
+        return;
       }
-      return;
-    }
-    if (quoteText instanceof HTMLElement) {
-      quoteText.textContent = `${payload.months} month(s): total ${formatCurrency(payload.total)} • platform fee ${formatCurrency(payload.platform_fee)} • owner payout ${formatCurrency(payload.owner_payout)}`;
+      if (quoteText instanceof HTMLElement) {
+        quoteText.textContent = `${payload.months} month(s): total ${formatCurrency(payload.total)} • platform fee ${formatCurrency(payload.platform_fee)} • owner payout ${formatCurrency(payload.owner_payout)}`;
+      }
+    } catch {
+      if (quoteText instanceof HTMLElement) {
+        quoteText.textContent = "We couldn't connect to the server to preview pricing.";
+      }
     }
   };
 
@@ -155,7 +179,12 @@ function wireBookingForm() {
     propertySelect.addEventListener("change", updateQuote);
   }
   if (startInput instanceof HTMLInputElement) {
-    startInput.addEventListener("change", updateQuote);
+    startInput.addEventListener("change", () => {
+      if (endInput instanceof HTMLInputElement) {
+        endInput.min = startInput.value || today;
+      }
+      updateQuote();
+    });
   }
   if (endInput instanceof HTMLInputElement) {
     endInput.addEventListener("change", updateQuote);
@@ -171,22 +200,38 @@ function wireBookingForm() {
       startDate: startInput instanceof HTMLInputElement ? startInput.value : "",
       endDate: endInput instanceof HTMLInputElement ? endInput.value : "",
     };
+    if (!payload.propertyId || !payload.startDate || !payload.endDate) {
+      setDashboardMessage(message, "Please choose a property and both dates.", true);
+      return;
+    }
+    if (payload.endDate <= payload.startDate) {
+      setDashboardMessage(message, "End date must be after start date.", true);
+      return;
+    }
     setDashboardMessage(message, "Creating Stripe checkout...");
-    const res = await fetch("/api/payments/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setDashboardMessage(message, data.error || "Unable to start checkout.", true);
-      return;
+    try {
+      const res = await fetch("/api/payments/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDashboardMessage(
+          message,
+          friendlyErrorMessage(data.error, "We couldn't start checkout right now."),
+          true
+        );
+        return;
+      }
+      if (data.checkout_url) {
+        window.location.href = data.checkout_url;
+        return;
+      }
+      setDashboardMessage(message, "Checkout was created, but we couldn't open Stripe. Please try again.", true);
+    } catch {
+      setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
     }
-    if (data.checkout_url) {
-      window.location.href = data.checkout_url;
-      return;
-    }
-    setDashboardMessage(message, "Checkout created, but no redirect URL was provided.", true);
   });
 }
 
@@ -401,8 +446,9 @@ function renderTenantBrowseGrid() {
 function createTenantPropertyCard(property, isFavorite) {
   const card = document.createElement("article");
   card.className = "property-card";
+  const imageSource = property.image_url || FALLBACK_PROPERTY_IMAGE;
   card.innerHTML = `
-    <img src="${escapeAttribute(property.image_url || "")}" alt="${escapeAttribute(property.title || "Property image")}">
+    <img src="${escapeAttribute(imageSource)}" alt="${escapeAttribute(property.title || "Property image")}">
     <div class="property-content">
       <div class="property-top">
         <h3>${escapeHtml(property.title || "")}</h3>
@@ -472,8 +518,25 @@ function formatCurrency(value) {
 
 function statusBadge(status) {
   const raw = String(status || "").toLowerCase().replace(/_/g, "-");
-  const label = String(status || "").replace(/_/g, " ").replace(/\w/g, (c) => c.toUpperCase());
+  const label = String(status || "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   return `<span class="status-badge is-${escapeHtml(raw)}">${escapeHtml(label)}</span>`;
+}
+
+function friendlyErrorMessage(rawMessage, fallbackMessage) {
+  const message = String(rawMessage || "").trim();
+  if (!message) {
+    return fallbackMessage;
+  }
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("invalid payload") ||
+    lower.includes("invalid input") ||
+    lower.includes("expected ") ||
+    lower.includes("api route")
+  ) {
+    return fallbackMessage;
+  }
+  return message;
 }
 
 function escapeHtml(value) {
