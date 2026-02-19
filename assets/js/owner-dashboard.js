@@ -169,13 +169,19 @@ function wirePropertyForm() {
     event.preventDefault();
     const formData = new FormData(form);
     const payload = formPayloadFromData(formData);
+    const isEditing = Number.isFinite(ownerState.editingPropertyId);
+    const editingProperty = isEditing
+      ? ownerState.properties.find((item) => item.id === ownerState.editingPropertyId)
+      : null;
+
+    // New listings should publish instantly in browse.
+    payload.status = editingProperty?.status || "active";
 
     if (payload.max_term_months < payload.min_term_months) {
       setDashboardMessage(message, "Max term must be greater than or equal to min term.", true);
       return;
     }
 
-    const isEditing = Number.isFinite(ownerState.editingPropertyId);
     const endpoint = isEditing
       ? `/api/owner/properties/${ownerState.editingPropertyId}`
       : "/api/owner/properties";

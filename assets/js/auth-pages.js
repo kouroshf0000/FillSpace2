@@ -8,6 +8,7 @@
   }
 
   const dashboardPath = role === "owner" ? "dashboard-owner.html" : "dashboard-tenant.html";
+  const params = new URLSearchParams(window.location.search);
   const loginForm = document.getElementById("login-form");
   const registerForm = document.getElementById("register-form");
   const authMessage = document.getElementById("auth-message");
@@ -117,5 +118,14 @@
   }
 
   setActiveTab("login");
+
+  if (window.location.protocol === "file:") {
+    setMessage("Open this app at http://localhost:4173 (not file://). Run: npm run dev", true);
+    return;
+  }
+
+  if (params.get("error") === "offline") {
+    setMessage("Server is offline. Start it with npm run dev, then refresh this page.", true);
+  }
 })();
 
