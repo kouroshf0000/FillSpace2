@@ -34,6 +34,25 @@ Then visit:
 http://localhost:4173
 ```
 
+## Deploying on Render
+
+Use a **Web Service** (Node) with:
+
+- **Build command**: `npm ci && npm run build`
+- **Start command**: `npm start`
+
+If your service currently uses `npm run build` and fails, this repo now includes a build script (`npm run test`) so Render build will pass.
+
+Recommended Render settings:
+
+- Node version: `20` (compatible with `better-sqlite3`)
+- Health check path: `/api/health`
+- Add all required env vars from `.env.example`
+
+For SQLite persistence on Render, mount a disk at:
+
+- `/opt/render/project/src/data`
+
 ## Environment variables
 
 Copy `.env.example` to `.env` and configure:

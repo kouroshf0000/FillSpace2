@@ -4,9 +4,13 @@
   "description": "FillSpace MVP marketing and marketplace site",
   "main": "server/index.js",
   "scripts": {
+    "build": "npm run test",
     "dev": "node server/index.js",
     "start": "node server/index.js",
     "test": "node --check server/index.js"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "repository": {
     "type": "git",
