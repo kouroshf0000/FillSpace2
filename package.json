@@ -19,7 +19,6 @@
     "url": "https://github.com/kouroshf0000/FillSpace2/issues"
   },
   "homepage": "https://github.com/kouroshf0000/FillSpace2#readme",
-  "devDependencies": {},
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.6.2",
@@ -27,6 +26,7 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "nodemailer": "^8.0.1",
     "stripe": "^20.3.1",
     "zod": "^4.3.6"
   }

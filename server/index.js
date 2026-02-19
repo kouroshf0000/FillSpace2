@@ -6,6 +6,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
 const Stripe = require("stripe");
 const { z } = require("zod");
 
@@ -29,8 +30,27 @@ const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
 const INQUIRY_FORWARD_URL = process.env.INQUIRY_FORWARD_URL || "https://formsubmit.co/kouroshf08@gmail.com";
 const INQUIRY_FORWARD_ENABLED = String(process.env.INQUIRY_FORWARD_ENABLED || "true").toLowerCase() !== "false";
+const SMTP_HOST = process.env.SMTP_HOST || "";
+const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
+const SMTP_SECURE = String(process.env.SMTP_SECURE || "false").toLowerCase() === "true";
+const SMTP_USER = process.env.SMTP_USER || "";
+const SMTP_PASS = process.env.SMTP_PASS || "";
+const INQUIRY_EMAIL_FROM = process.env.INQUIRY_EMAIL_FROM || SMTP_USER || "no-reply@fillspace.local";
+const INQUIRY_EMAIL_TO = process.env.INQUIRY_EMAIL_TO || "kouroshf08@gmail.com";
 
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
+const inquiryMailer =
+  SMTP_HOST && SMTP_USER && SMTP_PASS
+    ? nodemailer.createTransport({
+        host: SMTP_HOST,
+        port: SMTP_PORT,
+        secure: SMTP_SECURE,
+        auth: {
+          user: SMTP_USER,
+          pass: SMTP_PASS,
+        },
+      })
+    : null;
 
 function issueAuthCookie(res, user) {
   const token = jwt.sign(
@@ -116,6 +136,36 @@ function currency(valueInCents) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+async function sendInquiryEmailDirect(data) {
+  if (!inquiryMailer) {
+    return false;
+  }
+  const subject = data.subject || "New FillSpace inquiry";
+  const lines = [
+    `Name: ${data.name}`,
+    `Email: ${data.email}`,
+    `Company: ${data.company || "-"}`,
+    `Goal: ${data.goal}`,
+    `Timeline: ${data.timeline}`,
+    `Budget: ${data.budget || "-"}`,
+    `Property: ${data.property || "-"}`,
+    `Location: ${data.location || "-"}`,
+    `Source: ${data.source || "website"}`,
+    "",
+    "Message:",
+    data.message,
+  ];
+
+  await inquiryMailer.sendMail({
+    from: INQUIRY_EMAIL_FROM,
+    to: INQUIRY_EMAIL_TO,
+    replyTo: data.email,
+    subject,
+    text: lines.join("\n"),
+  });
+  return true;
 }
 
 const authInputSchema = z.object({
@@ -242,6 +292,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     stripeConfigured: Boolean(stripe),
+    inquiryEmailConfigured: Boolean(inquiryMailer),
     timestamp: new Date().toISOString(),
   });
 });
@@ -348,10 +399,21 @@ app.post(
     );
 
     const inquiryId = Number(insertResult.lastInsertRowid);
-    let forwarded = false;
-    let forwardStatus = "stored-only";
+    let delivered = false;
+    let deliveryStatus = "stored-only";
 
-    if (INQUIRY_FORWARD_ENABLED && INQUIRY_FORWARD_URL) {
+    if (inquiryMailer) {
+      try {
+        await sendInquiryEmailDirect(data);
+        delivered = true;
+        deliveryStatus = "smtp-sent";
+      } catch (error) {
+        console.error("Direct inquiry email failed:", error?.message || error);
+        deliveryStatus = "smtp-failed";
+      }
+    }
+
+    if (!delivered && INQUIRY_FORWARD_ENABLED && INQUIRY_FORWARD_URL) {
       try {
         const payload = new URLSearchParams({
           Name: data.name,
@@ -380,13 +442,13 @@ app.post(
         clearTimeout(timeout);
 
         if (forwardRes.ok) {
-          forwarded = true;
-          forwardStatus = "forwarded";
+          delivered = true;
+          deliveryStatus = "forwarded";
         } else {
-          forwardStatus = `forward-http-${forwardRes.status}`;
+          deliveryStatus = `forward-http-${forwardRes.status}`;
         }
       } catch {
-        forwardStatus = "forward-failed";
+        deliveryStatus = "forward-failed";
       }
     }
 
@@ -394,15 +456,15 @@ app.post(
       UPDATE inquiries
       SET email_forwarded = ?, forward_status = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).run(forwarded ? 1 : 0, forwardStatus, inquiryId);
+    `).run(delivered ? 1 : 0, deliveryStatus, inquiryId);
 
-    const responseMessage = forwarded
+    const responseMessage = delivered
       ? "Complete. Your request has been sent."
       : "Complete. Your request was saved and is queued for follow-up.";
-    return res.status(forwarded ? 201 : 202).json({
+    return res.status(delivered ? 201 : 202).json({
       ok: true,
       inquiry_id: inquiryId,
-      status: forwarded ? "complete" : "stored",
+      status: delivered ? "complete" : "stored",
       message: responseMessage,
     });
   })
@@ -1229,5 +1291,6 @@ app.use((error, _req, res, _next) => {
 app.listen(PORT, () => {
   console.log(`FillSpace server running at ${BASE_URL}`);
   console.log(`Stripe configured: ${stripe ? "yes" : "no"}`);
+  console.log(`Inquiry SMTP configured: ${inquiryMailer ? "yes" : "no"}`);
 });
 

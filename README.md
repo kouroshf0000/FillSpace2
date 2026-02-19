@@ -47,6 +47,20 @@ Required for marketplace payments:
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET` (optional but recommended for webhook signature validation)
 
+Required for direct inquiry email delivery:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_SECURE`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `INQUIRY_EMAIL_TO` (defaults to `kouroshf08@gmail.com`)
+
+Optional inquiry fallback (if SMTP is not configured):
+
+- `INQUIRY_FORWARD_ENABLED`
+- `INQUIRY_FORWARD_URL`
+
 ## Demo credentials
 
 Seeded local demo users:
@@ -99,5 +113,5 @@ Seeded local demo users:
 - Font stack includes Airbnb Cereal (`Airbnb Cereal App`) with system fallbacks.
 - Brand palette is matched to the deck PDF and centralized in `assets/css/style.css`.
 - Contact CTAs route users to `ask-info.html`.
-- Ask-info submissions post to the backend `POST /api/inquiries`, are saved in SQLite, and attempt email forwarding via `INQUIRY_FORWARD_URL`.
+- Ask-info submissions post to backend `POST /api/inquiries`, are saved in SQLite, and deliver via SMTP when configured.
 
