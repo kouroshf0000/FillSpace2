@@ -299,7 +299,7 @@ function renderReservationTables() {
     tr.innerHTML = `
       <td>${escapeHtml(row.property_title)}</td>
       <td>${escapeHtml(row.start_date)} → ${escapeHtml(row.end_date)}</td>
-      <td>${escapeHtml(row.status)}</td>
+      <td>${statusBadge(row.status)}</td>
       <td>${formatCurrency(row.total)}</td>
     `;
     upcomingBody.appendChild(tr);
@@ -316,7 +316,7 @@ function renderReservationTables() {
     tr.innerHTML = `
       <td>${escapeHtml(row.property_title)}</td>
       <td>${escapeHtml(row.start_date)} → ${escapeHtml(row.end_date)}</td>
-      <td>${escapeHtml(row.status)}</td>
+      <td>${statusBadge(row.status)}</td>
       <td>${formatCurrency(row.total)}</td>
     `;
     historyBody.appendChild(tr);
@@ -355,7 +355,7 @@ function renderFinanceTable() {
     tr.innerHTML = `
       <td>${escapeHtml((row.created_at || "").slice(0, 10))}</td>
       <td>${escapeHtml(row.property_title || "")}</td>
-      <td>${escapeHtml(row.status || "")}</td>
+      <td>${statusBadge(row.status)}</td>
       <td>${formatCurrency(row.total || 0)}</td>
       <td>${formatCurrency(row.platform_fee || 0)}</td>
     `;
@@ -468,6 +468,12 @@ function formatCurrency(value) {
     currency: "USD",
     minimumFractionDigits: 2,
   });
+}
+
+function statusBadge(status) {
+  const raw = String(status || "").toLowerCase().replace(/_/g, "-");
+  const label = String(status || "").replace(/_/g, " ").replace(/\w/g, (c) => c.toUpperCase());
+  return `<span class="status-badge is-${escapeHtml(raw)}">${escapeHtml(label)}</span>`;
 }
 
 function escapeHtml(value) {

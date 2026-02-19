@@ -77,63 +77,137 @@
 
           <form id="owner-property-form" class="dashboard-form">
             <input id="prop-id" name="property_id" type="hidden">
-            <div class="form-grid">
-              <div>
-                <label for="prop-title">Property title</label>
-                <input id="prop-title" name="title" type="text" required>
-              </div>
-              <div>
-                <label for="prop-location">Location</label>
-                <input id="prop-location" name="location" type="text" required>
-              </div>
-              <div>
-                <label for="prop-city">City</label>
-                <input id="prop-city" name="city" type="text">
-              </div>
-              <div>
-                <label for="prop-state">State</label>
-                <input id="prop-state" name="state" type="text" maxlength="20">
-              </div>
-              <div>
-                <label for="prop-size">Size (sq ft)</label>
-                <input id="prop-size" name="size_sqft" type="number" min="100" required>
-              </div>
-              <div>
-                <label for="prop-price">Monthly price (USD)</label>
-                <input id="prop-price" name="monthly_price" type="number" min="100" step="1" required>
-              </div>
-              <div>
-                <label for="prop-min-term">Min term (months)</label>
-                <input id="prop-min-term" name="min_term_months" type="number" min="1" max="24" required>
-              </div>
-              <div>
-                <label for="prop-max-term">Max term (months)</label>
-                <input id="prop-max-term" name="max_term_months" type="number" min="1" max="24" required>
-              </div>
-              <div>
-                <label for="prop-availability">Availability text</label>
-                <input id="prop-availability" name="availability_text" type="text" placeholder="Available now">
-              </div>
-              <div>
-                <label for="prop-image">Image URL</label>
-                <input id="prop-image" name="image_url" type="url" placeholder="https://...">
-              </div>
-              <div>
-                <label for="prop-best-for">Best for</label>
-                <input id="prop-best-for" name="best_for" type="text" placeholder="Pop-up retail, studio, office">
+
+            <div class="form-section">
+              <p class="form-section-title">Basic info</p>
+              <div class="form-grid two-col">
+                <div class="form-span-2">
+                  <label for="prop-title">Property title</label>
+                  <input id="prop-title" name="title" type="text" required placeholder="e.g. Bright corner retail unit in SoHo">
+                </div>
+                <div class="form-span-2">
+                  <label for="prop-location">Full address / area</label>
+                  <input id="prop-location" name="location" type="text" required placeholder="123 Main St, Boston MA">
+                </div>
+                <div>
+                  <label for="prop-city">City</label>
+                  <input id="prop-city" name="city" type="text" placeholder="Boston">
+                </div>
+                <div>
+                  <label for="prop-state">State</label>
+                  <select id="prop-state" name="state">
+                    <option value="">Select state</option>
+                    <option value="AL">Alabama</option><option value="AK">Alaska</option><option value="AZ">Arizona</option><option value="AR">Arkansas</option><option value="CA">California</option><option value="CO">Colorado</option><option value="CT">Connecticut</option><option value="DE">Delaware</option><option value="FL">Florida</option><option value="GA">Georgia</option><option value="HI">Hawaii</option><option value="ID">Idaho</option><option value="IL">Illinois</option><option value="IN">Indiana</option><option value="IA">Iowa</option><option value="KS">Kansas</option><option value="KY">Kentucky</option><option value="LA">Louisiana</option><option value="ME">Maine</option><option value="MD">Maryland</option><option value="MA">Massachusetts</option><option value="MI">Michigan</option><option value="MN">Minnesota</option><option value="MS">Mississippi</option><option value="MO">Missouri</option><option value="MT">Montana</option><option value="NE">Nebraska</option><option value="NV">Nevada</option><option value="NH">New Hampshire</option><option value="NJ">New Jersey</option><option value="NM">New Mexico</option><option value="NY">New York</option><option value="NC">North Carolina</option><option value="ND">North Dakota</option><option value="OH">Ohio</option><option value="OK">Oklahoma</option><option value="OR">Oregon</option><option value="PA">Pennsylvania</option><option value="RI">Rhode Island</option><option value="SC">South Carolina</option><option value="SD">South Dakota</option><option value="TN">Tennessee</option><option value="TX">Texas</option><option value="UT">Utah</option><option value="VT">Vermont</option><option value="VA">Virginia</option><option value="WA">Washington</option><option value="WV">West Virginia</option><option value="WI">Wisconsin</option><option value="WY">Wyoming</option>
+                  </select>
+                </div>
+                <div class="form-span-2">
+                  <label for="prop-image">Photo URL</label>
+                  <input id="prop-image" name="image_url" type="url" placeholder="https://images.unsplash.com/...">
+                </div>
               </div>
             </div>
-            <label for="prop-amenities">Amenities (comma-separated)</label>
-            <input id="prop-amenities" name="amenities" type="text" placeholder="Furnished, Parking, Loading access">
 
-            <label for="prop-utilities">Utilities info</label>
-            <input id="prop-utilities" name="utilities" type="text" placeholder="Internet and HVAC included">
+            <div class="form-section">
+              <p class="form-section-title">Space details</p>
+              <div class="form-grid two-col">
+                <div>
+                  <label for="prop-size">Size (sq ft)</label>
+                  <input id="prop-size" name="size_sqft" type="number" min="100" required placeholder="e.g. 1200">
+                </div>
+                <div>
+                  <label for="prop-price">Monthly rent (USD)</label>
+                  <input id="prop-price" name="monthly_price" type="number" min="100" step="1" required placeholder="e.g. 4500">
+                </div>
+              </div>
+              <label>Best for <span class="form-hint">Select all that apply</span></label>
+              <div class="pill-group">
+                <label class="pill-label"><input type="checkbox" name="best_for" value="Pop-up retail">Pop-up retail</label>
+                <label class="pill-label"><input type="checkbox" name="best_for" value="Office">Office</label>
+                <label class="pill-label"><input type="checkbox" name="best_for" value="Co-working">Co-working</label>
+                <label class="pill-label"><input type="checkbox" name="best_for" value="Showroom">Showroom</label>
+                <label class="pill-label"><input type="checkbox" name="best_for" value="Photography studio">Photography studio</label>
+                <label class="pill-label"><input type="checkbox" name="best_for" value="Event space">Event space</label>
+                <label class="pill-label"><input type="checkbox" name="best_for" value="Food and beverage">Food &amp; bev</label>
+                <label class="pill-label"><input type="checkbox" name="best_for" value="Fitness">Fitness</label>
+                <label class="pill-label"><input type="checkbox" name="best_for" value="Storage">Storage</label>
+                <label class="pill-label"><input type="checkbox" name="best_for" value="Creative studio">Creative studio</label>
+              </div>
+            </div>
 
-            <label for="prop-buildout">Buildout policy</label>
-            <input id="prop-buildout" name="buildout" type="text" placeholder="No major structural changes">
+            <div class="form-section">
+              <p class="form-section-title">Availability &amp; lease terms</p>
+              <div class="form-grid two-col">
+                <div>
+                  <label for="prop-availability">Available from</label>
+                  <select id="prop-availability" name="availability_text">
+                    <option value="Available now">Available now</option>
+                    <option value="Available in 30 days">Available in 30 days</option>
+                    <option value="Available in 60 days">Available in 60 days</option>
+                    <option value="Available in 90 days">Available in 90 days</option>
+                    <option value="By arrangement">By arrangement</option>
+                  </select>
+                </div>
+                <div></div>
+                <div>
+                  <label for="prop-min-term">Minimum term</label>
+                  <select id="prop-min-term" name="min_term_months" required>
+                    <option value="1">1 month</option><option value="2">2 months</option><option value="3">3 months</option><option value="4">4 months</option><option value="5">5 months</option><option value="6">6 months</option><option value="9">9 months</option><option value="12">12 months</option><option value="18">18 months</option><option value="24">24 months</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="prop-max-term">Maximum term</label>
+                  <select id="prop-max-term" name="max_term_months" required>
+                    <option value="1">1 month</option><option value="2">2 months</option><option value="3">3 months</option><option value="4">4 months</option><option value="5">5 months</option><option value="6">6 months</option><option value="9">9 months</option><option value="12">12 months</option><option value="18">18 months</option><option value="24">24 months</option>
+                  </select>
+                </div>
+              </div>
+            </div>
 
-            <label for="prop-description">Description</label>
-            <textarea id="prop-description" name="description" rows="4" required></textarea>
+            <div class="form-section">
+              <p class="form-section-title">Amenities <span class="form-hint">Select all that apply</span></p>
+              <div class="pill-group">
+                <label class="pill-label"><input type="checkbox" name="amenities" value="WiFi">WiFi</label>
+                <label class="pill-label"><input type="checkbox" name="amenities" value="Parking">Parking</label>
+                <label class="pill-label"><input type="checkbox" name="amenities" value="Loading dock">Loading dock</label>
+                <label class="pill-label"><input type="checkbox" name="amenities" value="HVAC">HVAC</label>
+                <label class="pill-label"><input type="checkbox" name="amenities" value="Furnished">Furnished</label>
+                <label class="pill-label"><input type="checkbox" name="amenities" value="Kitchen">Kitchen</label>
+                <label class="pill-label"><input type="checkbox" name="amenities" value="Natural light">Natural light</label>
+                <label class="pill-label"><input type="checkbox" name="amenities" value="Security system">Security system</label>
+                <label class="pill-label"><input type="checkbox" name="amenities" value="ADA accessible">ADA accessible</label>
+                <label class="pill-label"><input type="checkbox" name="amenities" value="Private entrance">Private entrance</label>
+                <label class="pill-label"><input type="checkbox" name="amenities" value="Restrooms">Restrooms</label>
+                <label class="pill-label"><input type="checkbox" name="amenities" value="Conference room">Conference room</label>
+                <label class="pill-label"><input type="checkbox" name="amenities" value="Storage room">Storage room</label>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <p class="form-section-title">Policies &amp; description</p>
+              <div class="form-grid two-col">
+                <div>
+                  <label for="prop-utilities">Utilities</label>
+                  <select id="prop-utilities" name="utilities">
+                    <option value="Fully included">Fully included</option>
+                    <option value="Internet and HVAC included">Internet &amp; HVAC included</option>
+                    <option value="Partially included">Partially included</option>
+                    <option value="Tenant pays utilities">Tenant pays utilities</option>
+                    <option value="Negotiable">Negotiable</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="prop-buildout">Buildout policy</label>
+                  <select id="prop-buildout" name="buildout">
+                    <option value="No modifications">No modifications</option>
+                    <option value="Cosmetic changes only">Cosmetic changes only</option>
+                    <option value="Minor buildout allowed">Minor buildout allowed</option>
+                    <option value="Open to negotiation">Open to negotiation</option>
+                  </select>
+                </div>
+              </div>
+              <label for="prop-description">Description</label>
+              <textarea id="prop-description" name="description" rows="5" required placeholder="Describe the space, layout, neighborhood, and what makes it special..."></textarea>
+            </div>
 
             <div class="dashboard-form-actions">
               <button class="btn btn-primary" id="owner-property-submit" type="submit">Add property</button>
