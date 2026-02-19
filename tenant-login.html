@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tenant Login | FillSpace</title>
+  <meta name="description" content="Tenant access portal for FillSpace reservations and watchlists.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.cdnfonts.com/css/airbnb-cereal-app" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="page-auth" data-auth-role="tenant">
+  <main class="section">
+    <div class="container auth-layout">
+      <section class="auth-panel">
+        <a class="brand auth-brand" href="index.html" aria-label="FillSpace home">
+          <span class="brand-mark">F</span>
+          <span class="brand-text">FillSpace</span>
+        </a>
+        <p class="eyebrow">Tenant access</p>
+        <h1>Tenant login</h1>
+        <p>Track reservations, finance details, and your saved watchlist in one place.</p>
+
+        <div class="auth-toggle">
+          <button class="btn btn-primary btn-small" type="button" data-auth-tab="login">Sign in</button>
+          <button class="btn btn-secondary btn-small" type="button" data-auth-tab="register">Create account</button>
+        </div>
+
+        <form id="login-form" class="auth-form" data-auth-section="login">
+          <label for="tenant-login-email">Email</label>
+          <input id="tenant-login-email" name="email" type="email" required>
+
+          <label for="tenant-login-password">Password</label>
+          <input id="tenant-login-password" name="password" type="password" required>
+
+          <button class="btn btn-primary btn-block" type="submit">Sign in as tenant</button>
+          <p class="auth-help">Demo account: <strong>tenant@fillspace.com</strong> / <strong>Tenant123!</strong></p>
+        </form>
+
+        <form id="register-form" class="auth-form is-hidden" data-auth-section="register">
+          <label for="tenant-register-name">Full name</label>
+          <input id="tenant-register-name" name="name" type="text" required>
+
+          <label for="tenant-register-company">Company / brand</label>
+          <input id="tenant-register-company" name="company" type="text">
+
+          <label for="tenant-register-email">Email</label>
+          <input id="tenant-register-email" name="email" type="email" required>
+
+          <label for="tenant-register-password">Password</label>
+          <input id="tenant-register-password" name="password" type="password" minlength="8" required>
+
+          <button class="btn btn-primary btn-block" type="submit">Create tenant account</button>
+        </form>
+
+        <p id="auth-message" class="auth-message" role="status" aria-live="polite"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="assets/js/auth-pages.js" defer></script>
+</body>
+</html>

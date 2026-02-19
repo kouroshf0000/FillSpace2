@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Owner Login | FillSpace</title>
+  <meta name="description" content="Owner access portal for FillSpace marketplace management.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.cdnfonts.com/css/airbnb-cereal-app" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="page-auth" data-auth-role="owner">
+  <main class="section">
+    <div class="container auth-layout">
+      <section class="auth-panel">
+        <a class="brand auth-brand" href="index.html" aria-label="FillSpace home">
+          <span class="brand-mark">F</span>
+          <span class="brand-text">FillSpace</span>
+        </a>
+        <p class="eyebrow">Owner access</p>
+        <h1>Owner login</h1>
+        <p>Manage listings, analytics, finance, and payouts from one dashboard.</p>
+
+        <div class="auth-toggle">
+          <button class="btn btn-primary btn-small" type="button" data-auth-tab="login">Sign in</button>
+          <button class="btn btn-secondary btn-small" type="button" data-auth-tab="register">Create account</button>
+        </div>
+
+        <form id="login-form" class="auth-form" data-auth-section="login">
+          <label for="owner-login-email">Email</label>
+          <input id="owner-login-email" name="email" type="email" required>
+
+          <label for="owner-login-password">Password</label>
+          <input id="owner-login-password" name="password" type="password" required>
+
+          <button class="btn btn-primary btn-block" type="submit">Sign in as owner</button>
+          <p class="auth-help">Demo account: <strong>owner@fillspace.com</strong> / <strong>Owner123!</strong></p>
+        </form>
+
+        <form id="register-form" class="auth-form is-hidden" data-auth-section="register">
+          <label for="owner-register-name">Full name</label>
+          <input id="owner-register-name" name="name" type="text" required>
+
+          <label for="owner-register-company">Company</label>
+          <input id="owner-register-company" name="company" type="text">
+
+          <label for="owner-register-email">Email</label>
+          <input id="owner-register-email" name="email" type="email" required>
+
+          <label for="owner-register-password">Password</label>
+          <input id="owner-register-password" name="password" type="password" minlength="8" required>
+
+          <button class="btn btn-primary btn-block" type="submit">Create owner account</button>
+        </form>
+
+        <p id="auth-message" class="auth-message" role="status" aria-live="polite"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="assets/js/auth-pages.js" defer></script>
+</body>
+</html>

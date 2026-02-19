@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browse Properties | FillSpace</title>
+  <meta name="description" content="Browse flexible mid-term commercial spaces for startups, pop-ups, and growing businesses.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.cdnfonts.com/css/airbnb-cereal-app" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="page-browse">
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="container nav-row">
+      <a class="brand" href="index.html" aria-label="FillSpace home">
+        <span class="brand-mark">F</span>
+        <span class="brand-text">FillSpace</span>
+      </a>
+
+      <button class="menu-toggle" aria-expanded="false" aria-controls="site-nav">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav id="site-nav" class="site-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a class="active" href="browse.html">Browse Properties</a>
+      </nav>
+
+      <div class="nav-cta-group">
+        <a class="btn btn-secondary btn-small" href="ask-info.html">Ask for info</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <section class="hero hero-min">
+      <div class="hero-bg-glow"></div>
+      <div class="container hero-single">
+        <p class="eyebrow">Curated marketplace</p>
+        <h1>Browse flexible commercial spaces</h1>
+        <p class="hero-subtitle">
+          Filter by location, size, budget, and amenities. Mid-term terms are built into every listing.
+        </p>
+      </div>
+    </section>
+
+    <section class="section surface">
+      <div class="container">
+        <div class="filters-card">
+          <div class="filters-grid">
+            <div>
+              <label for="filter-location">Location</label>
+              <select id="filter-location">
+                <option value="any">Any location</option>
+                <option value="Boston">Boston</option>
+                <option value="Cambridge">Cambridge</option>
+                <option value="Somerville">Somerville</option>
+              </select>
+            </div>
+            <div>
+              <label for="filter-size">Minimum sq ft</label>
+              <input id="filter-size" type="number" min="0" step="50" placeholder="e.g. 1200">
+            </div>
+            <div>
+              <label for="filter-price">Max monthly price</label>
+              <select id="filter-price">
+                <option value="any">Any price</option>
+                <option value="4000">Up to $4,000</option>
+                <option value="6000">Up to $6,000</option>
+                <option value="8000">Up to $8,000</option>
+                <option value="10000">Up to $10,000</option>
+              </select>
+            </div>
+            <div>
+              <label for="filter-amenity">Amenity focus</label>
+              <select id="filter-amenity">
+                <option value="any">Any amenity</option>
+                <option value="furnished">Furnished</option>
+                <option value="foot-traffic">High foot traffic</option>
+                <option value="loading">Loading access</option>
+                <option value="parking">On-site parking</option>
+                <option value="conference">Conference rooms</option>
+              </select>
+            </div>
+            <div>
+              <label for="sort-listings">Sort by</label>
+              <select id="sort-listings">
+                <option value="recommended">Recommended</option>
+                <option value="price-low">Price: low to high</option>
+                <option value="price-high">Price: high to low</option>
+                <option value="size-large">Size: large to small</option>
+              </select>
+            </div>
+            <div class="filter-actions">
+              <button class="btn btn-secondary btn-block" id="reset-filters" type="button">Reset filters</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section browse-section">
+      <div class="container browse-layout">
+        <div>
+          <div class="results-row">
+            <h2 id="results-count">6 properties available</h2>
+            <a class="btn btn-ghost btn-small" href="ask-info.html?source=browse">Need tailored options?</a>
+          </div>
+
+          <div class="property-grid" id="listing-grid">
+            <article class="property-card" data-property-id="seaport-retail-corner" data-location="Boston" data-size="1900" data-price="6200" data-amenities="foot-traffic,furnished">
+              <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1000&q=80" alt="Retail corner in Seaport">
+              <div class="property-content">
+                <div class="property-top">
+                  <h3>Seaport Retail Corner</h3>
+                  <span>Boston, MA</span>
+                </div>
+                <p>1,900 sq ft retail corner near dense office and tourism corridors.</p>
+                <div class="tag-row">
+                  <span>Foot traffic</span>
+                  <span>Furnished</span>
+                </div>
+                <div class="property-meta">
+                  <span>$6,200/mo</span>
+                  <span>1-4 months</span>
+                </div>
+                <div class="property-actions">
+                  <button class="property-open-btn" type="button" data-open-property>View details</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="property-card" data-property-id="kendall-growth-studio" data-location="Cambridge" data-size="2300" data-price="8100" data-amenities="conference,furnished,parking">
+              <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1000&q=80" alt="Creative office interior in Cambridge">
+              <div class="property-content">
+                <div class="property-top">
+                  <h3>Kendall Growth Studio</h3>
+                  <span>Cambridge, MA</span>
+                </div>
+                <p>2,300 sq ft office with meeting rooms, fiber internet, and turnkey furniture.</p>
+                <div class="tag-row">
+                  <span>Conference</span>
+                  <span>Parking</span>
+                </div>
+                <div class="property-meta">
+                  <span>$8,100/mo</span>
+                  <span>2-6 months</span>
+                </div>
+                <div class="property-actions">
+                  <button class="property-open-btn" type="button" data-open-property>View details</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="property-card" data-property-id="back-bay-pop-up-loft" data-location="Boston" data-size="1250" data-price="4850" data-amenities="foot-traffic,loading">
+              <img src="https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=1000&q=80" alt="Pop-up loft with natural light">
+              <div class="property-content">
+                <div class="property-top">
+                  <h3>Back Bay Pop-up Loft</h3>
+                  <span>Boston, MA</span>
+                </div>
+                <p>1,250 sq ft loft designed for activations and retail launches.</p>
+                <div class="tag-row">
+                  <span>Foot traffic</span>
+                  <span>Loading access</span>
+                </div>
+                <div class="property-meta">
+                  <span>$4,850/mo</span>
+                  <span>1-3 months</span>
+                </div>
+                <div class="property-actions">
+                  <button class="property-open-btn" type="button" data-open-property>View details</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="property-card" data-property-id="assembly-flex-unit" data-location="Somerville" data-size="2100" data-price="5600" data-amenities="loading,parking">
+              <img src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1000&q=80" alt="Flex warehouse-style unit">
+              <div class="property-content">
+                <div class="property-top">
+                  <h3>Assembly Flex Unit</h3>
+                  <span>Somerville, MA</span>
+                </div>
+                <p>2,100 sq ft hybrid showroom and storage with on-site parking.</p>
+                <div class="tag-row">
+                  <span>Loading access</span>
+                  <span>Parking</span>
+                </div>
+                <div class="property-meta">
+                  <span>$5,600/mo</span>
+                  <span>2-5 months</span>
+                </div>
+                <div class="property-actions">
+                  <button class="property-open-btn" type="button" data-open-property>View details</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="property-card" data-property-id="south-end-showcase" data-location="Boston" data-size="950" data-price="3400" data-amenities="foot-traffic">
+              <img src="https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?auto=format&fit=crop&w=1000&q=80" alt="Compact street-facing retail unit">
+              <div class="property-content">
+                <div class="property-top">
+                  <h3>South End Showcase</h3>
+                  <span>Boston, MA</span>
+                </div>
+                <p>950 sq ft boutique storefront for product launches and short campaigns.</p>
+                <div class="tag-row">
+                  <span>Foot traffic</span>
+                  <span>Street frontage</span>
+                </div>
+                <div class="property-meta">
+                  <span>$3,400/mo</span>
+                  <span>1-2 months</span>
+                </div>
+                <div class="property-actions">
+                  <button class="property-open-btn" type="button" data-open-property>View details</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="property-card" data-property-id="financial-district-showroom" data-location="Boston" data-size="1800" data-price="5900" data-amenities="conference,foot-traffic">
+              <img src="https://images.unsplash.com/photo-1497215842964-222b430dc094?auto=format&fit=crop&w=1000&q=80" alt="Retail showroom with conference lounge">
+              <div class="property-content">
+                <div class="property-top">
+                  <h3>Financial District Showroom</h3>
+                  <span>Boston, MA</span>
+                </div>
+                <p>1,800 sq ft destination showroom ideal for enterprise demos and events.</p>
+                <div class="tag-row">
+                  <span>Conference</span>
+                  <span>Foot traffic</span>
+                </div>
+                <div class="property-meta">
+                  <span>$5,900/mo</span>
+                  <span>2-5 months</span>
+                </div>
+                <div class="property-actions">
+                  <button class="property-open-btn" type="button" data-open-property>View details</button>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <aside>
+          <div class="side-panel sticky-panel">
+            <p class="eyebrow">Booking basics</p>
+            <h3>Fast, protected occupancy</h3>
+            <ul class="simple-list">
+              <li>Owner review window: up to 48 hours</li>
+              <li>Credit and business verification included</li>
+              <li>Insurance built into platform workflows</li>
+              <li>30-day rolling notice after initial term</li>
+            </ul>
+            <a class="btn btn-primary btn-block" href="ask-info.html?source=availability">Ask for availability help</a>
+          </div>
+
+          <div class="side-panel map-panel">
+            <h3>Coverage snapshot</h3>
+            <div class="map-placeholder" aria-label="Map placeholder showing Greater Boston">
+              <span>Greater Boston Coverage</span>
+            </div>
+            <p>Launching with curated inventory across Boston, Cambridge, and Somerville.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <a class="brand footer-brand" href="index.html">
+          <span class="brand-mark">F</span>
+          <span class="brand-text">FillSpace</span>
+        </a>
+        <p>The Airbnb-style marketplace for flexible commercial rentals.</p>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="about.html">About</a>
+        <a href="browse.html">Browse Properties</a>
+      </div>
+      <div>
+        <h4>Resources</h4>
+        <a href="about.html">How it works</a>
+        <a class="text-link" href="ask-info.html">Ask for more info</a>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <a href="mailto:hello@fillspace.com">hello@fillspace.com</a>
+        <a href="tel:+16178936712">(617) 893-6712</a>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <p>&copy; 2026 FillSpace, Inc. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <a class="floating-info-btn" href="ask-info.html">Ask for info</a>
+
+  <div class="modal" id="property-modal" aria-hidden="true" role="dialog" aria-labelledby="property-modal-title">
+    <div class="modal-backdrop" data-close-property></div>
+    <div class="modal-panel property-panel">
+      <button class="modal-close" aria-label="Close property details" data-close-property>&times;</button>
+      <p class="eyebrow" id="property-modal-location">Location</p>
+      <h2 id="property-modal-title">Property details</h2>
+      <p class="property-modal-subtitle" id="property-modal-subtitle">Size | Price | Term</p>
+      <div class="property-modal-layout">
+        <img id="property-modal-image" src="" alt="Property preview image">
+        <div>
+          <p id="property-modal-description" class="property-modal-description"></p>
+          <div class="property-spec-grid">
+            <article>
+              <span>Availability</span>
+              <strong id="property-modal-availability"></strong>
+            </article>
+            <article>
+              <span>Best for</span>
+              <strong id="property-modal-best-for"></strong>
+            </article>
+            <article>
+              <span>Utilities</span>
+              <strong id="property-modal-utilities"></strong>
+            </article>
+            <article>
+              <span>Buildout</span>
+              <strong id="property-modal-buildout"></strong>
+            </article>
+          </div>
+          <h3 class="property-highlights-title">Amenities & highlights</h3>
+          <ul class="property-highlights" id="property-modal-highlights"></ul>
+          <a class="btn btn-primary btn-block" id="property-contact-link" href="ask-info.html">Ask about this property</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/main.js" defer></script>
+</body>
+</html>
