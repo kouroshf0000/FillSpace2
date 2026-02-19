@@ -37,6 +37,7 @@ const SMTP_USER = process.env.SMTP_USER || "";
 const SMTP_PASS = process.env.SMTP_PASS || "";
 const INQUIRY_EMAIL_FROM = process.env.INQUIRY_EMAIL_FROM || SMTP_USER || "no-reply@fillspace.local";
 const INQUIRY_EMAIL_TO = process.env.INQUIRY_EMAIL_TO || "kouroshf08@gmail.com";
+const LISTING_NOTIFY_EMAIL_TO = process.env.LISTING_NOTIFY_EMAIL_TO || INQUIRY_EMAIL_TO;
 
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 const inquiryMailer =
@@ -163,6 +164,37 @@ async function sendInquiryEmailDirect(data) {
     to: INQUIRY_EMAIL_TO,
     replyTo: data.email,
     subject,
+    text: lines.join("\n"),
+  });
+  return true;
+}
+
+async function sendOwnerListingNotification(owner, property) {
+  if (!inquiryMailer) {
+    return false;
+  }
+  const monthlyPrice = Number(property?.monthlyPrice ?? property?.monthly_price ?? 0);
+  const minTerm = property?.minTermMonths ?? property?.min_term_months ?? "-";
+  const maxTerm = property?.maxTermMonths ?? property?.max_term_months ?? "-";
+  const createdAt = property?.createdAt ?? property?.created_at ?? new Date().toISOString();
+  const lines = [
+    "A new owner listing was published on FillSpace.",
+    "",
+    `Owner: ${owner?.name || "-"} (${owner?.email || "-"})`,
+    `Company: ${owner?.company || "-"}`,
+    `Title: ${property?.title || "-"}`,
+    `Location: ${property?.location || "-"}`,
+    `Price: $${monthlyPrice.toLocaleString("en-US")}/mo`,
+    `Term: ${minTerm}-${maxTerm} months`,
+    `Listing ID: ${property?.id || "-"}`,
+    `Slug: ${property?.slug || "-"}`,
+    `Created: ${createdAt}`,
+  ];
+
+  await inquiryMailer.sendMail({
+    from: INQUIRY_EMAIL_FROM,
+    to: LISTING_NOTIFY_EMAIL_TO,
+    subject: `New owner listing: ${property?.title || "Untitled listing"}`,
     text: lines.join("\n"),
   });
   return true;
@@ -574,7 +606,15 @@ app.post(
     );
 
     const property = db.prepare("SELECT * FROM properties WHERE id = ?").get(result.lastInsertRowid);
-    return res.status(201).json({ property: normalizePropertyRow(property) });
+    const normalizedProperty = normalizePropertyRow(property);
+
+    if (normalizedProperty) {
+      sendOwnerListingNotification(req.user, normalizedProperty).catch((error) => {
+        console.error("Owner listing notify email failed:", error?.message || error);
+      });
+    }
+
+    return res.status(201).json({ property: normalizedProperty });
   })
 );
 
@@ -1292,5 +1332,6 @@ app.listen(PORT, () => {
   console.log(`FillSpace server running at ${BASE_URL}`);
   console.log(`Stripe configured: ${stripe ? "yes" : "no"}`);
   console.log(`Inquiry SMTP configured: ${inquiryMailer ? "yes" : "no"}`);
+  console.log(`Listing notify target: ${LISTING_NOTIFY_EMAIL_TO}`);
 });
 

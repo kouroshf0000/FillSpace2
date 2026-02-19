@@ -37,6 +37,8 @@
     });
   }
 
+  initServerStatusIndicator();
+
   const openModal = (modalNode) => {
     if (!(modalNode instanceof HTMLElement)) {
       return;
@@ -498,6 +500,46 @@ function initFeaturedPropertyLinks() {
   });
 }
 
+function initServerStatusIndicator() {
+  const navRow = document.querySelector(".nav-row");
+  if (!(navRow instanceof HTMLElement)) {
+    return;
+  }
+  if (navRow.querySelector(".server-status-badge")) {
+    return;
+  }
+
+  const badge = document.createElement("span");
+  badge.className = "server-status-badge is-checking";
+  badge.textContent = "Server: checking";
+
+  navRow.appendChild(badge);
+
+  const setState = (state) => {
+    badge.classList.remove("is-checking", "is-online", "is-offline");
+    if (state === "online") {
+      badge.classList.add("is-online");
+      badge.textContent = "Server: online";
+      return;
+    }
+    if (state === "offline") {
+      badge.classList.add("is-offline");
+      badge.textContent = "Server: offline";
+      return;
+    }
+    badge.classList.add("is-checking");
+    badge.textContent = "Server: checking";
+  };
+
+  const abortController = new AbortController();
+  const timeout = setTimeout(() => abortController.abort(), 4500);
+  fetch("/api/health", { cache: "no-store", signal: abortController.signal })
+    .then((res) => (res.ok ? res.json() : Promise.reject(new Error("offline"))))
+    .then(() => setState("online"))
+    .catch(() => setState("offline"))
+    .finally(() => clearTimeout(timeout));
+}
+
 function setText(node, value) {
   if (node instanceof HTMLElement) {
     node.textContent = value;
@@ -578,23 +620,37 @@ function initScrollReveal() {
 }
 
 function initAskInfoFormPrefill() {
-  const form = document.getElementById("ask-info-form");
-  if (!(form instanceof HTMLFormElement)) {
-    return;
-  }
-
   const params = new URLSearchParams(window.location.search);
   const property = String(params.get("property") || "").trim();
   const location = String(params.get("location") || "").trim();
   const source = String(params.get("source") || "website").trim();
   const goal = String(params.get("goal") || "").trim();
+  const contextBadge = document.getElementById("ask-context-badge");
+  const contextNote = document.getElementById("ask-context-note");
+
+  if (contextBadge instanceof HTMLElement && property) {
+    contextBadge.textContent = location ? `${property} • ${location}` : property;
+  } else if (contextBadge instanceof HTMLElement) {
+    contextBadge.textContent = "General inquiry";
+  }
+
+  if (contextNote instanceof HTMLElement && property) {
+    const details = location ? `${property} in ${location}` : property;
+    contextNote.textContent = `Context detected: ${details}. Mention this in your Jotform message for faster routing.`;
+  } else if (contextNote instanceof HTMLElement) {
+    contextNote.textContent = "Tip: include preferred location, size, and timeline so we can respond faster.";
+  }
+
+  const form = document.getElementById("ask-info-form");
+  if (!(form instanceof HTMLFormElement)) {
+    return;
+  }
 
   const propertyField = document.getElementById("ask-property-context");
   const locationField = document.getElementById("ask-location-context");
   const sourceField = document.getElementById("ask-source");
   const goalField = document.getElementById("ask-goal");
   const subjectField = document.getElementById("ask-subject");
-  const contextBadge = document.getElementById("ask-context-badge");
   const propertyGroup = document.getElementById("ask-property-group");
   const locationGroup = document.getElementById("ask-location-group");
 
@@ -627,12 +683,6 @@ function initAskInfoFormPrefill() {
 
   if (subjectField instanceof HTMLInputElement && property) {
     subjectField.value = `New FillSpace inquiry for ${property}`;
-  }
-
-  if (contextBadge instanceof HTMLElement && property) {
-    contextBadge.textContent = location ? `${property} • ${location}` : property;
-  } else if (contextBadge instanceof HTMLElement) {
-    contextBadge.textContent = "General inquiry";
   }
 }
 

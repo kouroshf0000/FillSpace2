@@ -47,7 +47,7 @@ Required for marketplace payments:
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET` (optional but recommended for webhook signature validation)
 
-Required for direct inquiry email delivery:
+Required for owner listing notification emails (and optional backend inquiry forwarding):
 
 - `SMTP_HOST`
 - `SMTP_PORT`
@@ -55,6 +55,7 @@ Required for direct inquiry email delivery:
 - `SMTP_USER`
 - `SMTP_PASS`
 - `INQUIRY_EMAIL_TO` (defaults to `kouroshf08@gmail.com`)
+- `LISTING_NOTIFY_EMAIL_TO` (owner new-listing alerts)
 
 Optional inquiry fallback (if SMTP is not configured):
 
@@ -74,6 +75,8 @@ Seeded local demo users:
 - **Owner dashboard**:
   - full property creation form,
   - listing management,
+  - immediate publish to browse results on creation,
+  - optional email alert when new listings are published,
   - analytics snapshot,
   - finance transactions,
   - tax/legal document references,
@@ -113,5 +116,6 @@ Seeded local demo users:
 - Font stack includes Airbnb Cereal (`Airbnb Cereal App`) with system fallbacks.
 - Brand palette is matched to the deck PDF and centralized in `assets/css/style.css`.
 - Contact CTAs route users to `ask-info.html`.
-- Ask-info submissions post to backend `POST /api/inquiries`, are saved in SQLite, and deliver via SMTP when configured.
+- `ask-info.html` now embeds Jotform (`260495754274870`) for direct lead capture and Jotform-managed notifications.
+- Backend `POST /api/inquiries` remains available for API-based ingestion and stores submissions in SQLite.
 
