@@ -284,6 +284,7 @@ ul {
   color: var(--ink-800);
   font-weight: 500;
   font-size: 0.97rem;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .site-nav a:hover {
@@ -1163,6 +1164,7 @@ textarea:focus {
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .dashboard-nav button.active {
@@ -1187,6 +1189,7 @@ textarea:focus {
 
 .dashboard-panel.active {
   display: block;
+  animation: dashboard-panel-enter 0.22s ease;
 }
 
 .panel-header {
@@ -1396,26 +1399,36 @@ textarea:focus {
 .modal {
   position: fixed;
   inset: 0;
-  display: none;
+  display: block;
   z-index: 60;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, visibility 0.2s step-end;
 }
 
 .modal.is-open {
-  display: block;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 0.2s ease;
 }
 
 .modal.is-open .modal-backdrop {
-  animation: modal-backdrop-in 0.2s ease;
+  opacity: 1;
 }
 
 .modal.is-open .modal-panel {
-  animation: modal-panel-in 0.24s ease;
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 .modal-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(0, 35, 56, 0.62);
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .modal-panel {
@@ -1430,6 +1443,9 @@ textarea:focus {
   overflow: auto;
   overscroll-behavior: contain;
   padding: 1.25rem;
+  opacity: 0;
+  transform: translateY(18px) scale(0.985);
+  transition: opacity 0.24s ease, transform 0.24s ease;
 }
 
 .modal-close {
@@ -1546,23 +1562,14 @@ textarea:focus {
   display: none;
 }
 
-@keyframes modal-backdrop-in {
+@keyframes dashboard-panel-enter {
   from {
     opacity: 0;
+    transform: translateY(7px);
   }
   to {
     opacity: 1;
-  }
-}
-
-@keyframes modal-panel-in {
-  from {
-    opacity: 0;
-    transform: translateY(18px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
@@ -1758,24 +1765,48 @@ textarea:focus {
     filter: none;
     transition: none;
   }
+
+  .dashboard-panel.active {
+    animation: none;
+  }
+
+  .modal,
+  .modal-backdrop,
+  .modal-panel,
+  .site-nav,
+  .menu-toggle span {
+    transition: none;
+  }
 }
 
 @media (hover: none) and (pointer: coarse) {
   .btn:hover,
   .property-card:hover,
   .property-open-btn:hover,
-  .table-action-btn:hover {
+  .table-action-btn:hover,
+  .floating-info-btn:hover {
     transform: none;
   }
 
   .btn:active,
   .property-open-btn:active,
-  .table-action-btn:active {
+  .table-action-btn:active,
+  .floating-info-btn:active {
     transform: scale(0.985);
   }
 
   .property-card:hover {
     box-shadow: var(--shadow-soft);
+  }
+
+  .site-nav a:active {
+    background: rgba(var(--blue-accent-rgb), 0.14);
+    color: var(--ink-900);
+  }
+
+  .dashboard-nav button:active {
+    background: rgba(var(--blue-accent-rgb), 0.12);
+    border-color: rgba(var(--blue-accent-rgb), 0.3);
   }
 }
 
