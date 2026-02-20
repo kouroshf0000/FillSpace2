@@ -8,10 +8,15 @@
   const body = document.body;
 
   if (menuToggle && nav) {
+    const setMenuState = (isOpen) => {
+      nav.classList.toggle("open", isOpen);
+      menuToggle.setAttribute("aria-expanded", String(isOpen));
+      body.classList.toggle("menu-open", isOpen);
+    };
+
     menuToggle.addEventListener("click", () => {
       const willOpen = !nav.classList.contains("open");
-      nav.classList.toggle("open", willOpen);
-      menuToggle.setAttribute("aria-expanded", String(willOpen));
+      setMenuState(willOpen);
     });
 
     document.addEventListener("click", (event) => {
@@ -24,16 +29,20 @@
         !target.closest(".site-nav") &&
         !target.closest(".menu-toggle")
       ) {
-        nav.classList.remove("open");
-        menuToggle.setAttribute("aria-expanded", "false");
+        setMenuState(false);
       }
     });
 
     nav.querySelectorAll("a").forEach((link) => {
       link.addEventListener("click", () => {
-        nav.classList.remove("open");
-        menuToggle.setAttribute("aria-expanded", "false");
+        setMenuState(false);
       });
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 860 && nav.classList.contains("open")) {
+        setMenuState(false);
+      }
     });
   }
 
@@ -89,6 +98,8 @@
 })();
 
 const runtimePropertyDetails = Object.create(null);
+const FALLBACK_PROPERTY_IMAGE =
+  "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80";
 
 async function hydrateBrowseListingsFromApi() {
   const listingGrid = document.getElementById("listing-grid");
@@ -128,7 +139,7 @@ async function hydrateBrowseListingsFromApi() {
         highlights: Array.isArray(property.amenities) && property.amenities.length
           ? property.amenities.map((amenity) => `${amenity} included`)
           : ["Verified businesses", "Streamlined approvals", "Insurance-ready workflow"],
-        image: property.image_url || "",
+        image: property.image_url || FALLBACK_PROPERTY_IMAGE,
         imageAlt: property.title || "Property image",
       };
     }
@@ -147,6 +158,7 @@ function createBrowseCardFromApi(property) {
     property.description && property.description.length > 130
       ? `${property.description.slice(0, 127)}...`
       : property.description || "Flexible listing for short-term commercial occupancy.";
+  const imageSource = property.image_url || FALLBACK_PROPERTY_IMAGE;
 
   card.className = "property-card";
   card.dataset.propertyId = property.slug || `property-${property.id}`;
@@ -156,7 +168,7 @@ function createBrowseCardFromApi(property) {
   card.dataset.amenities = amenityDataset;
 
   card.innerHTML = `
-    <img src="${escapeAttribute(property.image_url || "")}" alt="${escapeAttribute(property.title || "Property image")}">
+    <img src="${escapeAttribute(imageSource)}" alt="${escapeAttribute(property.title || "Property image")}">
     <div class="property-content">
       <div class="property-top">
         <h3>${escapeHtml(property.title || "")}</h3>
@@ -397,7 +409,9 @@ function initBrowsePropertyDetails(modalApi) {
     }
 
     if (imageNode instanceof HTMLImageElement) {
-      imageNode.src = details.image || (fallbackImage instanceof HTMLImageElement ? fallbackImage.src : "");
+      imageNode.src =
+        details.image ||
+        (fallbackImage instanceof HTMLImageElement ? fallbackImage.src : FALLBACK_PROPERTY_IMAGE);
       imageNode.alt = details.imageAlt || (fallbackImage instanceof HTMLImageElement ? fallbackImage.alt : "Property image");
     }
 
@@ -693,7 +707,11 @@ function initAskInfoFormSubmit() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setStatus(data.error || "Unable to submit your request right now.", true, false);
+        setStatus(
+          friendlyErrorMessage(data.error, "We couldn't send your request right now. Please try again."),
+          true,
+          false
+        );
         submitButton.disabled = false;
         submitButton.textContent = "Send message";
         return;
@@ -726,7 +744,7 @@ function initAskInfoFormSubmit() {
         submitButton.textContent = "Send message";
       }, 2000);
     } catch {
-      setStatus("Unable to reach server. Please try again in a moment.", true, false);
+      setStatus("We couldn't reach the server. Please try again in a moment.", true, false);
       submitButton.disabled = false;
       submitButton.textContent = "Send message";
     }
@@ -744,6 +762,23 @@ function escapeHtml(value) {
 
 function escapeAttribute(value) {
   return escapeHtml(value).replaceAll("`", "&#96;");
+}
+
+function friendlyErrorMessage(rawMessage, fallbackMessage) {
+  const message = String(rawMessage || "").trim();
+  if (!message) {
+    return fallbackMessage;
+  }
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("invalid payload") ||
+    lower.includes("invalid input") ||
+    lower.includes("expected ") ||
+    lower.includes("api route")
+  ) {
+    return fallbackMessage;
+  }
+  return message;
 }
 
 const PROPERTY_DETAILS = {

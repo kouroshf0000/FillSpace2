@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login | FillSpace</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="page-auth">
+  <header class="site-header">
+    <div class="container nav-row">
+      <a class="brand" href="index.html" aria-label="FillSpace home">
+        <span class="brand-mark">F</span>
+        <span class="brand-text">FillSpace</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="section auth-section">
+    <div class="container auth-shell">
+      <article class="auth-card">
+        <p class="eyebrow">FillSpace Admin</p>
+        <h1>Admin sign in</h1>
+        <p>Use demo admin credentials to review documents and override booking statuses.</p>
+        <form id="admin-login-form" class="stacked-form">
+          <label for="admin-email">Email</label>
+          <input id="admin-email" type="email" autocomplete="email" required>
+          <label for="admin-password">Password</label>
+          <input id="admin-password" type="password" autocomplete="current-password" required>
+          <button class="btn btn-primary" type="submit">Sign in</button>
+          <p id="admin-login-message" class="auth-message" role="status" aria-live="polite"></p>
+        </form>
+      </article>
+    </div>
+  </main>
+
+  <script src="assets/js/admin-login.js" defer></script>
+</body>
+</html>

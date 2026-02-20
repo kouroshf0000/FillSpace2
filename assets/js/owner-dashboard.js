@@ -35,6 +35,8 @@ const ownerState = {
   wireConnectStripe();
   wirePropertyForm();
   wirePropertyTableActions();
+  wireOwnerRequestActions();
+  wireOwnerDocumentForm();
   setPropertyFormMode(null);
   handleStripeReturnState();
 
@@ -48,16 +50,20 @@ function wireMobileMenu() {
     return;
   }
 
+  const setMenuState = (isOpen) => {
+    nav.classList.toggle("open", isOpen);
+    menuToggle.setAttribute("aria-expanded", String(isOpen));
+    document.body.classList.toggle("menu-open", isOpen);
+  };
+
   menuToggle.addEventListener("click", () => {
     const willOpen = !nav.classList.contains("open");
-    nav.classList.toggle("open", willOpen);
-    menuToggle.setAttribute("aria-expanded", String(willOpen));
+    setMenuState(willOpen);
   });
 
   nav.querySelectorAll("a").forEach((link) => {
     link.addEventListener("click", () => {
-      nav.classList.remove("open");
-      menuToggle.setAttribute("aria-expanded", "false");
+      setMenuState(false);
     });
   });
 
@@ -69,8 +75,13 @@ function wireMobileMenu() {
       !target.closest(".menu-toggle") &&
       nav.classList.contains("open")
     ) {
-      nav.classList.remove("open");
-      menuToggle.setAttribute("aria-expanded", "false");
+      setMenuState(false);
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 860 && nav.classList.contains("open")) {
+      setMenuState(false);
     }
   });
 }
@@ -136,12 +147,19 @@ function wireConnectStripe() {
       });
       const payload = await res.json();
       if (!res.ok) {
-        alert(payload.error || "Unable to start Stripe onboarding.");
+        alert(
+          friendlyErrorMessage(
+            payload.error,
+            "We couldn't start payout setup right now. Please try again in a moment."
+          )
+        );
         return;
       }
       if (payload.onboarding_url) {
         window.location.href = payload.onboarding_url;
       }
+    } catch {
+      alert("We couldn't reach Stripe setup right now. Please try again.");
     } finally {
       button.disabled = false;
       button.textContent = "Connect Stripe";
@@ -169,6 +187,7 @@ function wirePropertyForm() {
     event.preventDefault();
     const formData = new FormData(form);
     const payload = formPayloadFromData(formData);
+    const submitButton = document.getElementById("owner-property-submit");
     const isEditing = Number.isFinite(ownerState.editingPropertyId);
     const editingProperty = isEditing
       ? ownerState.properties.find((item) => item.id === ownerState.editingPropertyId)
@@ -178,7 +197,7 @@ function wirePropertyForm() {
     payload.status = editingProperty?.status || "active";
 
     if (payload.max_term_months < payload.min_term_months) {
-      setDashboardMessage(message, "Max term must be greater than or equal to min term.", true);
+      setDashboardMessage(message, "Maximum term must be the same as or longer than minimum term.", true);
       return;
     }
 
@@ -188,27 +207,42 @@ function wirePropertyForm() {
     const method = isEditing ? "PUT" : "POST";
 
     setDashboardMessage(message, isEditing ? "Saving property updates..." : "Saving listing...");
-    const res = await fetch(endpoint, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      setDashboardMessage(message, data.error || "Could not save listing.", true);
-      return;
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.disabled = true;
     }
+    try {
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
 
-    resetPropertyForm(form);
-    setPropertyFormMode(null);
-    setDashboardMessage(
-      message,
-      isEditing
-        ? "Property updated. Browse listings reflect the latest changes."
-        : "Property added. It is now available in browse results."
-    );
-    await loadAllDashboardData();
+      if (!res.ok) {
+        setDashboardMessage(
+          message,
+          friendlyErrorMessage(data.error, "We couldn't save this listing. Please try again."),
+          true
+        );
+        return;
+      }
+
+      resetPropertyForm(form);
+      setPropertyFormMode(null);
+      setDashboardMessage(
+        message,
+        isEditing
+          ? "Property updated. Browse listings reflect the latest changes."
+          : "Property added. It is now available in browse results."
+      );
+      await loadAllDashboardData();
+    } catch {
+      setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
+    } finally {
+      if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = false;
+      }
+    }
   });
 }
 
@@ -257,18 +291,56 @@ function wirePropertyTableActions() {
       }
       const nextStatus = property.status === "active" ? "paused" : "active";
       setDashboardMessage(message, `Updating ${property.title} status...`);
-      const res = await fetch(`/api/owner/properties/${propertyId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setDashboardMessage(message, data.error || "Could not update listing status.", true);
+      try {
+        const res = await fetch(`/api/owner/properties/${propertyId}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: nextStatus }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setDashboardMessage(
+            message,
+            friendlyErrorMessage(data.error, "We couldn't update this listing right now."),
+            true
+          );
+          return;
+        }
+        setDashboardMessage(message, `${property.title} is now ${nextStatus}.`);
+        await loadAllDashboardData();
+      } catch {
+        setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
+      }
+      return;
+    }
+
+    if (action === "toggle-requests") {
+      const property = ownerState.properties.find((item) => item.id === propertyId);
+      if (!property) {
         return;
       }
-      setDashboardMessage(message, `${property.title} is now ${nextStatus}.`);
-      await loadAllDashboardData();
+      const nextPaused = !Boolean(property.requests_paused);
+      setDashboardMessage(message, `${nextPaused ? "Pausing" : "Resuming"} requests for ${property.title}...`);
+      try {
+        const res = await fetch(`/api/owner/properties/${propertyId}/request-settings`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paused: nextPaused }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setDashboardMessage(
+            message,
+            friendlyErrorMessage(data.error, "We couldn't update request settings right now."),
+            true
+          );
+          return;
+        }
+        setDashboardMessage(message, `${property.title} request state updated.`);
+        await loadAllDashboardData();
+      } catch {
+        setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
+      }
       return;
     }
 
@@ -285,23 +357,229 @@ function wirePropertyTableActions() {
       }
 
       setDashboardMessage(message, `Deleting ${property.title}...`);
-      const res = await fetch(`/api/owner/properties/${propertyId}`, {
-        method: "DELETE",
+      try {
+        const res = await fetch(`/api/owner/properties/${propertyId}`, {
+          method: "DELETE",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setDashboardMessage(
+            message,
+            friendlyErrorMessage(data.error, "We couldn't delete this listing right now."),
+            true
+          );
+          return;
+        }
+
+        if (ownerState.editingPropertyId === propertyId) {
+          resetPropertyForm(form);
+          setPropertyFormMode(null);
+        }
+        setDashboardMessage(message, `${property.title} deleted.`);
+        await loadAllDashboardData();
+      } catch {
+        setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
+      }
+    }
+  });
+}
+
+function wireOwnerRequestActions() {
+  const tbody = document.querySelector("#owner-requests-table tbody");
+  const message = document.getElementById("owner-property-message");
+  if (!(tbody instanceof HTMLElement)) {
+    return;
+  }
+
+  tbody.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const actionButton = target.closest("[data-owner-request-action]");
+    if (!(actionButton instanceof HTMLButtonElement)) {
+      return;
+    }
+    const reservationId = Number(actionButton.dataset.requestId);
+    if (!Number.isFinite(reservationId)) {
+      return;
+    }
+    const action = String(actionButton.dataset.ownerRequestAction || "");
+
+    if (action === "accept" || action === "decline") {
+      setDashboardMessage(message, `${action === "accept" ? "Accepting" : "Declining"} booking request...`);
+      try {
+        const res = await fetch(`/api/owner/booking-requests/${reservationId}/respond`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision: action }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setDashboardMessage(
+            message,
+            friendlyErrorMessage(payload.error, "We couldn't update this request right now."),
+            true
+          );
+          return;
+        }
+        setDashboardMessage(
+          message,
+          action === "accept"
+            ? "Request accepted. Tenant received payment link."
+            : "Request declined."
+        );
+        await loadAllDashboardData();
+      } catch {
+        setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
+      }
+      return;
+    }
+
+    if (action === "cancel") {
+      const confirmed = window.confirm("Cancel this paid reservation and issue full refund?");
+      if (!confirmed) {
+        return;
+      }
+      setDashboardMessage(message, "Cancelling reservation and processing refund...");
+      try {
+        const res = await fetch(`/api/owner/reservations/${reservationId}/cancel`, {
+          method: "POST",
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setDashboardMessage(
+            message,
+            friendlyErrorMessage(payload.error, "We couldn't cancel this reservation right now."),
+            true
+          );
+          return;
+        }
+        setDashboardMessage(message, "Reservation cancelled and refund initiated.");
+        await loadAllDashboardData();
+      } catch {
+        setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
+      }
+    }
+  });
+}
+
+function wireOwnerDocumentForm() {
+  const form = document.getElementById("owner-doc-form");
+  const reservationSelect = document.getElementById("owner-doc-reservation");
+  const message = document.getElementById("owner-doc-message");
+  if (!(form instanceof HTMLFormElement) || !(reservationSelect instanceof HTMLSelectElement)) {
+    return;
+  }
+
+  reservationSelect.addEventListener("change", () => {
+    const reservationId = Number(reservationSelect.value);
+    if (Number.isFinite(reservationId)) {
+      loadOwnerDocumentsForReservation(reservationId).catch(() => {});
+    }
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const reservationId = Number(reservationSelect.value);
+    if (!Number.isFinite(reservationId)) {
+      setDashboardMessage(message, "Please select a reservation.", true);
+      return;
+    }
+    const payload = {
+      party: "owner",
+      document_type: String(document.getElementById("owner-doc-type")?.value || "").trim(),
+      file_name: String(document.getElementById("owner-doc-name")?.value || "").trim(),
+      file_url: String(document.getElementById("owner-doc-url")?.value || "").trim(),
+      mime_type: "",
+      size_bytes: 0,
+      accepted_terms: Boolean(document.getElementById("owner-doc-terms")?.checked),
+    };
+    setDashboardMessage(message, "Uploading document...");
+    try {
+      const res = await fetch(`/api/reservations/${reservationId}/documents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setDashboardMessage(message, data.error || "Could not delete listing.", true);
+        setDashboardMessage(
+          message,
+          friendlyErrorMessage(data.error, "We couldn't upload this document right now."),
+          true
+        );
         return;
       }
-
-      if (ownerState.editingPropertyId === propertyId) {
-        resetPropertyForm(form);
-        setPropertyFormMode(null);
-      }
-      setDashboardMessage(message, `${property.title} deleted.`);
+      form.reset();
+      setDashboardMessage(message, "Document uploaded successfully.");
       await loadAllDashboardData();
+      await loadOwnerDocumentsForReservation(reservationId);
+    } catch {
+      setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
     }
   });
+}
+
+function renderOwnerDocumentReservationOptions(allRows) {
+  const reservationSelect = document.getElementById("owner-doc-reservation");
+  if (!(reservationSelect instanceof HTMLSelectElement)) {
+    return;
+  }
+  const eligible = (allRows || []).filter((row) =>
+    ["documents_pending", "documents_under_review", "documents_incomplete", "booking_confirmed", "payment_completed"].includes(
+      String(row.status || "")
+    )
+  );
+  const previousValue = reservationSelect.value;
+  reservationSelect.innerHTML = `<option value="">Select reservation</option>`;
+  for (const row of eligible) {
+    const option = document.createElement("option");
+    option.value = String(row.id);
+    option.textContent = `${row.property_title || "Property"} · ${row.start_date} → ${row.end_date}`;
+    reservationSelect.appendChild(option);
+  }
+  if (previousValue && Array.from(reservationSelect.options).some((option) => option.value === previousValue)) {
+    reservationSelect.value = previousValue;
+  } else if (eligible.length) {
+    reservationSelect.value = String(eligible[0].id);
+  }
+  if (reservationSelect.value) {
+    loadOwnerDocumentsForReservation(Number(reservationSelect.value)).catch(() => {});
+  } else {
+    const list = document.getElementById("owner-doc-list");
+    if (list instanceof HTMLElement) {
+      list.innerHTML = "<li>No document-required reservations yet.</li>";
+    }
+  }
+}
+
+async function loadOwnerDocumentsForReservation(reservationId) {
+  const list = document.getElementById("owner-doc-list");
+  if (!(list instanceof HTMLElement) || !Number.isFinite(reservationId)) {
+    return;
+  }
+  list.innerHTML = "";
+  const res = await fetch(`/api/reservations/${reservationId}/documents`);
+  if (!res.ok) {
+    list.innerHTML = "<li>Unable to load documents.</li>";
+    return;
+  }
+  const payload = await res.json();
+  const documents = payload.documents || [];
+  if (!documents.length) {
+    list.innerHTML = "<li>No documents uploaded yet.</li>";
+    return;
+  }
+  for (const doc of documents) {
+    const item = document.createElement("li");
+    item.innerHTML = `${escapeHtml(doc.party || "")}: <a class="inline-link" href="${escapeAttribute(
+      doc.file_url || "#"
+    )}" target="_blank" rel="noopener noreferrer">${escapeHtml(doc.file_name || "Document")}</a> (${escapeHtml(
+      doc.document_type || "Document"
+    )})`;
+    list.appendChild(item);
+  }
 }
 
 function formPayloadFromData(formData) {
@@ -320,6 +598,7 @@ function formPayloadFromData(formData) {
     status: String(formData.get("status") || "active"),
     utilities: String(formData.get("utilities") || "").trim(),
     buildout: String(formData.get("buildout") || "").trim(),
+    cancellation_policy: String(formData.get("cancellation_policy") || "moderate").trim() || "moderate",
     description: String(formData.get("description") || "").trim(),
     amenities: formData.getAll("amenities").filter(Boolean),
   };
@@ -347,6 +626,7 @@ function fillPropertyForm(form, property) {
   setField("status", property.status);
   setField("utilities", property.utilities);
   setField("buildout", property.buildout);
+  setField("cancellation_policy", property.cancellation_policy || "moderate");
   setField("description", property.description);
 
   const amenitySet = new Set(Array.isArray(property.amenities) ? property.amenities : []);
@@ -399,6 +679,7 @@ async function loadAllDashboardData() {
   const results = await Promise.allSettled([
     loadOwnerOverview(),
     loadOwnerProperties(),
+    loadOwnerRequests(),
     loadOwnerAnalytics(),
     loadOwnerFinance(),
     loadOwnerInquiries(),
@@ -429,8 +710,64 @@ async function loadOwnerOverview() {
   setText("metric-owner-payout", formatCurrency(analytics.summary.owner_payouts || 0));
 
   const stripeStatus = document.getElementById("owner-stripe-status");
+  const connectStripeBtn = document.getElementById("connect-stripe-btn");
+  const propertySubmitBtn = document.getElementById("owner-property-submit");
+  const dashboardMessage = document.getElementById("owner-property-message");
+  const stripeDetails = dashboard?.stripe_status || {};
   if (stripeStatus) {
-    stripeStatus.textContent = dashboard.stripe_connected ? "Stripe connected" : "Stripe not connected";
+    if (!stripeDetails.connected) {
+      stripeStatus.textContent = "Stripe not connected";
+    } else if (stripeDetails.ready) {
+      stripeStatus.textContent = "Stripe connected";
+    } else {
+      stripeStatus.textContent = "Stripe onboarding incomplete";
+    }
+  }
+  if (connectStripeBtn instanceof HTMLButtonElement) {
+    if (!stripeDetails.connected) {
+      connectStripeBtn.textContent = "Connect Stripe";
+    } else if (stripeDetails.ready) {
+      connectStripeBtn.textContent = "Stripe Connected";
+    } else {
+      connectStripeBtn.textContent = "Continue Stripe onboarding";
+    }
+  }
+  if (propertySubmitBtn instanceof HTMLButtonElement) {
+    propertySubmitBtn.disabled = Boolean(!stripeDetails.ready);
+  }
+  if (!stripeDetails.ready && dashboardMessage instanceof HTMLElement) {
+    setDashboardMessage(
+      dashboardMessage,
+      dashboard.stripe_message || "Finish Stripe onboarding before listing properties.",
+      true
+    );
+  }
+
+  const notificationsList = document.getElementById("owner-notifications-list");
+  if (notificationsList instanceof HTMLElement) {
+    notificationsList.innerHTML = "";
+    try {
+      const notificationsRes = await fetch("/api/notifications");
+      if (notificationsRes.ok) {
+        const notificationsPayload = await notificationsRes.json();
+        const rows = (notificationsPayload.notifications || []).slice(0, 5);
+        if (!rows.length) {
+          const item = document.createElement("li");
+          item.textContent = "No recent notifications.";
+          notificationsList.appendChild(item);
+        } else {
+          for (const row of rows) {
+            const item = document.createElement("li");
+            item.textContent = `${String(row.created_at || "").slice(0, 16).replace("T", " ")} · ${row.message}`;
+            notificationsList.appendChild(item);
+          }
+        }
+      }
+    } catch {
+      const item = document.createElement("li");
+      item.textContent = "Notifications are temporarily unavailable.";
+      notificationsList.appendChild(item);
+    }
   }
 }
 
@@ -451,6 +788,7 @@ async function loadOwnerProperties() {
   for (const property of ownerState.properties) {
     const statusLabel = formatStatus(property.status);
     const toggleLabel = property.status === "active" ? "Pause" : "Activate";
+    const requestToggleLabel = property.requests_paused ? "Resume requests" : "Pause requests";
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${escapeHtml(property.title)}</td>
@@ -464,6 +802,9 @@ async function loadOwnerProperties() {
           </button>
           <button class="table-action-btn" type="button" data-owner-action="toggle-status" data-property-id="${property.id}">
             ${toggleLabel}
+          </button>
+          <button class="table-action-btn" type="button" data-owner-action="toggle-requests" data-property-id="${property.id}">
+            ${requestToggleLabel}
           </button>
           <button class="table-action-btn danger" type="button" data-owner-action="delete" data-property-id="${property.id}">
             Delete
@@ -479,6 +820,74 @@ async function loadOwnerProperties() {
     row.innerHTML = `<td colspan="5">No properties yet.</td>`;
     tbody.appendChild(row);
   }
+  applyResponsiveTableLabels("#owner-properties-table");
+}
+
+async function loadOwnerRequests() {
+  const res = await fetch("/api/owner/booking-requests");
+  if (!res.ok) {
+    notifyDashboardError("Unable to load booking requests.");
+    return;
+  }
+  const payload = await res.json();
+  const allRows = [
+    ...(payload.pending_requests || []),
+    ...(payload.active_workflow || []),
+    ...(payload.archived || []),
+  ];
+  const tbody = document.querySelector("#owner-requests-table tbody");
+  if (!(tbody instanceof HTMLElement)) {
+    return;
+  }
+  tbody.innerHTML = "";
+
+  for (const row of allRows) {
+    const deadline =
+      row.status === "request_submitted"
+        ? String(row.response_deadline_at || "")
+        : row.status === "payment_pending"
+          ? String(row.payment_deadline_at || "")
+          : "";
+    const actions = [];
+    if (row.status === "request_submitted") {
+      actions.push(
+        `<button class="table-action-btn" type="button" data-owner-request-action="accept" data-request-id="${row.id}">Accept</button>`
+      );
+      actions.push(
+        `<button class="table-action-btn danger" type="button" data-owner-request-action="decline" data-request-id="${row.id}">Decline</button>`
+      );
+    } else if (
+      ["payment_completed", "documents_pending", "documents_under_review", "documents_incomplete", "booking_confirmed"].includes(
+        row.status
+      )
+    ) {
+      actions.push(
+        `<button class="table-action-btn danger" type="button" data-owner-request-action="cancel" data-request-id="${row.id}">Cancel + Refund</button>`
+      );
+    } else {
+      actions.push(`<span class="table-muted">No actions</span>`);
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(String(row.created_at || "").slice(0, 16).replace("T", " "))}</td>
+      <td>${escapeHtml(row.tenant_name || "")}<br><small>${escapeHtml(row.tenant_email || "")}</small></td>
+      <td>${escapeHtml(row.property_title || "")}</td>
+      <td>${escapeHtml(row.start_date || "")} → ${escapeHtml(row.end_date || "")}</td>
+      <td>${statusBadge(row.status)}</td>
+      <td>${escapeHtml(formatDateTime(deadline))}${row.auto_accepted ? " (auto)" : ""}</td>
+      <td><div class="property-row-actions">${actions.join("")}</div></td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  if (!tbody.children.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="7">No booking requests yet.</td>`;
+    tbody.appendChild(tr);
+  }
+  applyResponsiveTableLabels("#owner-requests-table");
+  renderOwnerDocumentReservationOptions(allRows);
 }
 
 async function loadOwnerAnalytics() {
@@ -510,6 +919,7 @@ async function loadOwnerAnalytics() {
     row.innerHTML = `<td colspan="4">No analytics yet.</td>`;
     tbody.appendChild(row);
   }
+  applyResponsiveTableLabels("#owner-analytics-table");
 }
 
 async function loadOwnerFinance() {
@@ -543,6 +953,7 @@ async function loadOwnerFinance() {
     row.innerHTML = `<td colspan="6">No transactions yet.</td>`;
     tbody.appendChild(row);
   }
+  applyResponsiveTableLabels("#owner-finance-table");
 }
 
 async function loadOwnerLegal() {
@@ -561,6 +972,23 @@ async function loadOwnerLegal() {
     const item = document.createElement("li");
     item.textContent = `${doc.name} (${doc.category}) · Updated ${doc.updated_at}`;
     list.appendChild(item);
+  }
+
+  try {
+    const taxRes = await fetch("/api/owner/tax/1099-summary");
+    if (!taxRes.ok) {
+      return;
+    }
+    const tax = await taxRes.json();
+    const csvLink = document.createElement("a");
+    csvLink.href = `/api/owner/tax/1099.csv?year=${encodeURIComponent(tax.year)}`;
+    csvLink.textContent = `Download ${tax.year} 1099 CSV (${tax.reservation_count} confirmed bookings)`;
+    csvLink.className = "inline-link";
+    const wrapper = document.createElement("li");
+    wrapper.appendChild(csvLink);
+    list.appendChild(wrapper);
+  } catch {
+    // Tax summary is optional if endpoint is unavailable.
   }
 }
 
@@ -600,6 +1028,7 @@ async function loadOwnerInquiries() {
     row.innerHTML = `<td colspan="6">No inquiries yet.</td>`;
     tbody.appendChild(row);
   }
+  applyResponsiveTableLabels("#owner-inquiries-table");
 }
 
 function setText(id, value) {
@@ -617,6 +1046,18 @@ function formatCurrency(value) {
   });
 }
 
+function formatDateTime(rawIso) {
+  const raw = String(rawIso || "");
+  if (!raw) {
+    return "—";
+  }
+  const date = new Date(raw);
+  if (Number.isNaN(date.valueOf())) {
+    return raw;
+  }
+  return date.toLocaleString();
+}
+
 function formatStatus(status) {
   const raw = String(status || "").trim();
   if (!raw) {
@@ -627,8 +1068,48 @@ function formatStatus(status) {
 
 function statusBadge(status) {
   const raw = String(status || "").toLowerCase().replace(/_/g, "-");
-  const label = String(status || "").replace(/_/g, " ").replace(/\w/g, (c) => c.toUpperCase());
+  const label = String(status || "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   return `<span class="status-badge is-${escapeHtml(raw)}">${escapeHtml(label)}</span>`;
+}
+
+function friendlyErrorMessage(rawMessage, fallbackMessage) {
+  const message = String(rawMessage || "").trim();
+  if (!message) {
+    return fallbackMessage;
+  }
+  const lower = message.toLowerCase();
+  if (
+    lower.includes("invalid payload") ||
+    lower.includes("invalid input") ||
+    lower.includes("expected ") ||
+    lower.includes("api route")
+  ) {
+    return fallbackMessage;
+  }
+  return message;
+}
+
+function applyResponsiveTableLabels(selector) {
+  const table = document.querySelector(selector);
+  if (!(table instanceof HTMLTableElement)) {
+    return;
+  }
+  const headers = Array.from(table.querySelectorAll("thead th")).map((node) =>
+    String(node.textContent || "").trim()
+  );
+  table.querySelectorAll("tbody tr").forEach((row) => {
+    const cells = Array.from(row.children).filter((cell) => cell instanceof HTMLTableCellElement);
+    cells.forEach((cell, index) => {
+      if (!(cell instanceof HTMLTableCellElement)) {
+        return;
+      }
+      if (cell.hasAttribute("colspan")) {
+        cell.removeAttribute("data-label");
+        return;
+      }
+      cell.dataset.label = headers[index] || "";
+    });
+  });
 }
 
 function escapeHtml(value) {
@@ -638,5 +1119,9 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replaceAll("`", "&#96;");
 }
 

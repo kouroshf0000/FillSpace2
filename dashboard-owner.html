@@ -43,6 +43,7 @@
         <nav class="dashboard-nav" aria-label="Owner dashboard sections">
           <button type="button" data-dash-target="owner-overview" class="active">Overview</button>
           <button type="button" data-dash-target="owner-properties">Properties</button>
+          <button type="button" data-dash-target="owner-requests">Booking requests</button>
           <button type="button" data-dash-target="owner-analytics">Analytics</button>
           <button type="button" data-dash-target="owner-finance">Finance</button>
           <button type="button" data-dash-target="owner-inquiries">Inquiries</button>
@@ -67,6 +68,7 @@
             <article><h4>Gross revenue</h4><p id="metric-gross-revenue">$0.00</p></article>
             <article><h4>Owner payouts</h4><p id="metric-owner-payout">$0.00</p></article>
           </div>
+          <ul id="owner-notifications-list" class="simple-list"></ul>
         </article>
 
         <article id="owner-properties" class="dashboard-panel">
@@ -204,6 +206,14 @@
                     <option value="Open to negotiation">Open to negotiation</option>
                   </select>
                 </div>
+                <div>
+                  <label for="prop-cancel-policy">Cancellation policy</label>
+                  <select id="prop-cancel-policy" name="cancellation_policy">
+                    <option value="flexible">Flexible (full refund)</option>
+                    <option value="moderate" selected>Moderate (50% refund)</option>
+                    <option value="strict">Strict (no refund)</option>
+                  </select>
+                </div>
               </div>
               <label for="prop-description">Description</label>
               <textarea id="prop-description" name="description" rows="5" required placeholder="Describe the space, layout, neighborhood, and what makes it special..."></textarea>
@@ -230,6 +240,52 @@
               <tbody></tbody>
             </table>
           </div>
+        </article>
+
+        <article id="owner-requests" class="dashboard-panel">
+          <div class="panel-header">
+            <h3>Booking requests</h3>
+            <p>Respond within 48 hours. Unanswered requests are auto-accepted.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="dashboard-table" id="owner-requests-table">
+              <thead>
+                <tr>
+                  <th>Received</th>
+                  <th>Tenant</th>
+                  <th>Property</th>
+                  <th>Dates</th>
+                  <th>Status</th>
+                  <th>Deadline</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <form id="owner-doc-form" class="dashboard-form top-space">
+            <label for="owner-doc-reservation">Reservation</label>
+            <select id="owner-doc-reservation" name="reservation_id" required></select>
+            <div class="form-grid two-col">
+              <div>
+                <label for="owner-doc-type">Document type</label>
+                <input id="owner-doc-type" name="document_type" type="text" required placeholder="e.g. Lease Addendum">
+              </div>
+              <div>
+                <label for="owner-doc-name">File name</label>
+                <input id="owner-doc-name" name="file_name" type="text" required placeholder="e.g. lease.pdf">
+              </div>
+            </div>
+            <label for="owner-doc-url">Document URL</label>
+            <input id="owner-doc-url" name="file_url" type="url" required placeholder="https://...">
+            <label class="pill-label">
+              <input id="owner-doc-terms" type="checkbox" required>
+              I confirm this document is accurate and I accept FillSpace document terms.
+            </label>
+            <button class="btn btn-primary" type="submit">Upload owner document</button>
+            <p id="owner-doc-message" class="dashboard-message" role="status" aria-live="polite"></p>
+          </form>
+          <ul id="owner-doc-list" class="simple-list"></ul>
         </article>
 
         <article id="owner-analytics" class="dashboard-panel">

@@ -62,6 +62,7 @@
             <article><h4>Saved properties</h4><p id="tenant-metric-favorites">0</p></article>
             <article><h4>Confirmed spend</h4><p id="tenant-metric-spend">$0.00</p></article>
           </div>
+          <ul id="tenant-notifications-list" class="simple-list"></ul>
         </article>
 
         <article id="tenant-reservations" class="dashboard-panel">
@@ -144,7 +145,7 @@
         <article id="tenant-booking" class="dashboard-panel">
           <div class="panel-header">
             <h3>Book with Stripe</h3>
-            <p>Create checkout sessions where FillSpace keeps 12% and the owner receives payout automatically.</p>
+            <p>Submit a request first. Owners have 48 hours to respond, then payment happens through your Stripe link by email.</p>
           </div>
           <form id="tenant-booking-form" class="dashboard-form">
             <label for="booking-property">Property</label>
@@ -165,9 +166,57 @@
               <p id="booking-quote-text">Select dates to preview pricing.</p>
             </div>
 
-            <button class="btn btn-primary" type="submit">Proceed to Stripe checkout</button>
+            <button class="btn btn-primary" type="submit">Submit booking request</button>
             <p id="tenant-booking-message" class="dashboard-message" role="status" aria-live="polite"></p>
           </form>
+
+          <div class="panel-header top-space">
+            <h3>Request timeline</h3>
+            <p>Edit dates while pending, cancel requests, or complete payment when accepted.</p>
+          </div>
+          <div class="table-wrap">
+            <table class="dashboard-table" id="tenant-requests-table">
+              <thead>
+                <tr>
+                  <th>Property</th>
+                  <th>Dates</th>
+                  <th>Status</th>
+                  <th>Total due now</th>
+                  <th>Deadline</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="panel-header top-space">
+            <h3>Required documents</h3>
+            <p>After payment, upload required documents within 24 hours.</p>
+          </div>
+          <form id="tenant-doc-form" class="dashboard-form">
+            <label for="tenant-doc-reservation">Reservation</label>
+            <select id="tenant-doc-reservation" name="reservation_id" required></select>
+            <div class="form-grid two-col">
+              <div>
+                <label for="tenant-doc-type">Document type</label>
+                <input id="tenant-doc-type" name="document_type" type="text" required placeholder="e.g. Government ID">
+              </div>
+              <div>
+                <label for="tenant-doc-name">File name</label>
+                <input id="tenant-doc-name" name="file_name" type="text" required placeholder="e.g. id-front.pdf">
+              </div>
+            </div>
+            <label for="tenant-doc-url">Document URL</label>
+            <input id="tenant-doc-url" name="file_url" type="url" required placeholder="https://...">
+            <label class="pill-label">
+              <input id="tenant-doc-terms" type="checkbox" required>
+              I confirm this document is accurate and I accept FillSpace document terms.
+            </label>
+            <button class="btn btn-primary" type="submit">Upload tenant document</button>
+            <p id="tenant-doc-message" class="dashboard-message" role="status" aria-live="polite"></p>
+          </form>
+          <ul id="tenant-doc-list" class="simple-list"></ul>
 
           <div class="panel-header top-space">
             <h3>Browse and add to watchlist</h3>
