@@ -99,6 +99,25 @@ db.exec(`
   );
 `);
 
+function tableHasColumn(tableName, columnName) {
+  const rows = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  return rows.some((row) => row.name === columnName);
+}
+
+function runReservationMigrations() {
+  if (!tableHasColumn("reservations", "security_deposit_cents")) {
+    db.exec("ALTER TABLE reservations ADD COLUMN security_deposit_cents INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!tableHasColumn("reservations", "security_deposit_status")) {
+    db.exec("ALTER TABLE reservations ADD COLUMN security_deposit_status TEXT NOT NULL DEFAULT 'none'");
+  }
+  if (!tableHasColumn("reservations", "security_deposit_refund_id")) {
+    db.exec("ALTER TABLE reservations ADD COLUMN security_deposit_refund_id TEXT DEFAULT ''");
+  }
+}
+
+runReservationMigrations();
+
 function slugify(input) {
   return String(input)
     .trim()

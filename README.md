@@ -18,6 +18,9 @@ A multi-page FillSpace MVP with:
 - `tenant-login.html` - Tenant authentication portal
 - `dashboard-owner.html` - Owner dashboard
 - `dashboard-tenant.html` - Tenant dashboard
+- `connect.html` - Stripe Connect sample dashboard
+- `storefront.html` - Connected account storefront sample
+- `done.html` - Stripe checkout completion page
 
 ## Quick start (important)
 
@@ -65,6 +68,7 @@ Required for marketplace payments:
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET` (optional but recommended for webhook signature validation)
+- `SECURITY_DEPOSIT_USD` (optional; defaults to `500`)
 
 Required for direct inquiry delivery and owner listing notification emails:
 
@@ -139,6 +143,15 @@ Seeded local demo users:
 - `POST /api/tenant/favorites/:propertyId`
 - `POST /api/payments/checkout`
 - `POST /api/payments/webhook`
+- `POST /api/create-connect-account`
+- `POST /api/create-account-link`
+- `GET /api/account-status/:accountId`
+- `GET /api/account-login-link/:accountId`
+- `POST /api/create-product`
+- `GET /api/products/:accountId`
+- `POST /api/create-checkout-session`
+- `GET /api/owner/tax/1099-summary`
+- `GET /api/owner/tax/1099.csv`
 
 ## Design notes
 

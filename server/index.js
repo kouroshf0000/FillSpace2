@@ -39,6 +39,11 @@ const INQUIRY_EMAIL_FROM = process.env.INQUIRY_EMAIL_FROM || SMTP_USER || "no-re
 const INQUIRY_EMAIL_TO = process.env.INQUIRY_EMAIL_TO || "kouroshf08@gmail.com";
 const LISTING_NOTIFY_EMAIL_TO = process.env.LISTING_NOTIFY_EMAIL_TO || INQUIRY_EMAIL_TO;
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const SECURITY_DEPOSIT_USD_VALUE = Number(process.env.SECURITY_DEPOSIT_USD || 500);
+const SECURITY_DEPOSIT_USD = Number.isFinite(SECURITY_DEPOSIT_USD_VALUE)
+  ? Math.max(0, SECURITY_DEPOSIT_USD_VALUE)
+  : 500;
+const SECURITY_DEPOSIT_CENTS = Math.round(SECURITY_DEPOSIT_USD * 100);
 
 const stripe = STRIPE_SECRET_KEY ? new Stripe(STRIPE_SECRET_KEY) : null;
 const inquiryMailer =
@@ -199,6 +204,110 @@ async function sendOwnerListingNotification(owner, property) {
     text: lines.join("\n"),
   });
   return true;
+}
+
+function summarizeStripeRequirements(account) {
+  const currentlyDue = Array.isArray(account?.requirements?.currently_due)
+    ? account.requirements.currently_due
+    : [];
+  const pastDue = Array.isArray(account?.requirements?.past_due) ? account.requirements.past_due : [];
+  const allDue = [...currentlyDue, ...pastDue].filter(Boolean);
+  return Array.from(new Set(allDue)).slice(0, 10);
+}
+
+function stripeStatusFromAccount(account) {
+  if (!account) {
+    return {
+      configured: Boolean(stripe),
+      connected: false,
+      ready: false,
+      details_submitted: false,
+      charges_enabled: false,
+      payouts_enabled: false,
+      requirements_due: [],
+      disabled_reason: "",
+      account_id: "",
+    };
+  }
+  return {
+    configured: Boolean(stripe),
+    connected: true,
+    ready: Boolean(account.details_submitted && account.charges_enabled && account.payouts_enabled),
+    details_submitted: Boolean(account.details_submitted),
+    charges_enabled: Boolean(account.charges_enabled),
+    payouts_enabled: Boolean(account.payouts_enabled),
+    requirements_due: summarizeStripeRequirements(account),
+    disabled_reason: String(account?.requirements?.disabled_reason || ""),
+    account_id: String(account.id || ""),
+  };
+}
+
+async function getStripeStatusForAccountId(accountId) {
+  if (!stripe) {
+    return {
+      configured: false,
+      connected: Boolean(accountId),
+      ready: false,
+      details_submitted: false,
+      charges_enabled: false,
+      payouts_enabled: false,
+      requirements_due: [],
+      disabled_reason: "",
+      account_id: String(accountId || ""),
+    };
+  }
+  if (!accountId) {
+    return stripeStatusFromAccount(null);
+  }
+  try {
+    const account = await stripe.accounts.retrieve(accountId);
+    return stripeStatusFromAccount(account);
+  } catch {
+    return {
+      configured: true,
+      connected: true,
+      ready: false,
+      details_submitted: false,
+      charges_enabled: false,
+      payouts_enabled: false,
+      requirements_due: [],
+      disabled_reason: "account_unavailable",
+      account_id: String(accountId || ""),
+    };
+  }
+}
+
+async function getStripeStatusForUser(user) {
+  return getStripeStatusForAccountId(user?.stripe_account_id || "");
+}
+
+function stripeSetupMessage(status) {
+  if (!status?.configured) {
+    return "Payout setup is temporarily unavailable. Please try again later.";
+  }
+  if (!status?.connected) {
+    return "Connect Stripe and complete onboarding before you can list properties.";
+  }
+  if (!status?.ready) {
+    return "Finish Stripe onboarding before listing properties or accepting bookings.";
+  }
+  return "";
+}
+
+function csvEscape(value) {
+  const text = String(value ?? "");
+  if (text.includes(",") || text.includes('"') || text.includes("\n")) {
+    return `"${text.replaceAll('"', '""')}"`;
+  }
+  return text;
+}
+
+function feeAmountFromSubtotal(subtotalCents) {
+  const cents = Number(subtotalCents || 0);
+  if (!Number.isFinite(cents) || cents <= 0) {
+    return 0;
+  }
+  return Math.max(0, Math.round(cents * PLATFORM_FEE_RATE));
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -415,6 +524,34 @@ const inquirySchema = z.object({
   subject: z.string().trim().optional().default("New FillSpace inquiry"),
 });
 
+const connectAccountSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, { message: "Please enter an email address." })
+    .refine((value) => EMAIL_PATTERN.test(value), { message: "Please enter a valid email address." }),
+});
+
+const accountIdSchema = z.object({
+  accountId: z.string().trim().min(1, { message: "Missing account id." }),
+});
+
+const createProductSchema = z.object({
+  productName: z.string().trim().min(1, { message: "Please enter a product name." }),
+  productDescription: z.string().trim().optional().default(""),
+  productPrice: z
+    .coerce
+    .number()
+    .int({ message: "Price must be a whole number of cents." })
+    .min(50, { message: "Price must be at least 50 cents." }),
+  accountId: z.string().trim().min(1, { message: "Missing account id." }),
+});
+
+const checkoutSessionSchema = z.object({
+  priceId: z.string().trim().min(1, { message: "Missing price id." }),
+  accountId: z.string().trim().min(1, { message: "Missing account id." }),
+});
+
 app.use(cookieParser());
 
 app.post(
@@ -443,6 +580,10 @@ app.post(
         UPDATE reservations
         SET status = 'confirmed',
             stripe_payment_intent_id = COALESCE(?, stripe_payment_intent_id),
+            security_deposit_status = CASE
+              WHEN security_deposit_cents > 0 THEN 'held'
+              ELSE security_deposit_status
+            END,
             updated_at = CURRENT_TIMESTAMP
         WHERE stripe_checkout_session_id = ?
       `).run(session.payment_intent || "", session.id);
@@ -452,7 +593,9 @@ app.post(
       const session = event.data.object;
       db.prepare(`
         UPDATE reservations
-        SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP
+        SET status = 'cancelled',
+            security_deposit_status = 'none',
+            updated_at = CURRENT_TIMESTAMP
         WHERE stripe_checkout_session_id = ?
       `).run(session.id);
     }
@@ -461,7 +604,9 @@ app.post(
       const paymentIntent = event.data.object;
       db.prepare(`
         UPDATE reservations
-        SET status = 'failed', updated_at = CURRENT_TIMESTAMP
+        SET status = 'failed',
+            security_deposit_status = 'none',
+            updated_at = CURRENT_TIMESTAMP
         WHERE stripe_payment_intent_id = ?
       `).run(paymentIntent.id);
     }
@@ -486,6 +631,221 @@ app.get("/api/health", (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+app.post(
+  "/api/create-connect-account",
+  runAsync(async (req, res) => {
+    if (!stripe) {
+      return res.status(501).json({ error: "Stripe is not configured on this server." });
+    }
+    const parsed = connectAccountSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: formatValidationError(parsed.error, "Please provide a valid email address."),
+      });
+    }
+
+    const account = await stripe.accounts.create({
+      type: "express",
+      country: "US",
+      email: parsed.data.email,
+      business_type: "company",
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+    });
+
+    return res.status(201).json({ accountId: account.id });
+  })
+);
+
+app.post(
+  "/api/create-account-link",
+  runAsync(async (req, res) => {
+    if (!stripe) {
+      return res.status(501).json({ error: "Stripe is not configured on this server." });
+    }
+    const parsed = accountIdSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: formatValidationError(parsed.error, "Missing connected account id."),
+      });
+    }
+
+    const accountLink = await stripe.accountLinks.create({
+      account: parsed.data.accountId,
+      type: "account_onboarding",
+      refresh_url: `${BASE_URL}/connect.html?accountId=${encodeURIComponent(parsed.data.accountId)}&onboarding=refresh`,
+      return_url: `${BASE_URL}/connect.html?accountId=${encodeURIComponent(parsed.data.accountId)}&onboarding=return`,
+    });
+
+    return res.json({ url: accountLink.url });
+  })
+);
+
+app.get(
+  "/api/account-status/:accountId",
+  runAsync(async (req, res) => {
+    if (!stripe) {
+      return res.status(501).json({ error: "Stripe is not configured on this server." });
+    }
+
+    const accountId = String(req.params.accountId || "").trim();
+    if (!accountId) {
+      return res.status(400).json({ error: "Missing connected account id." });
+    }
+
+    const account = await stripe.accounts.retrieve(accountId);
+    return res.json({
+      id: account.id,
+      payoutsEnabled: Boolean(account.payouts_enabled),
+      chargesEnabled: Boolean(account.charges_enabled),
+      detailsSubmitted: Boolean(account.details_submitted),
+      requirements: {
+        currentlyDue: account?.requirements?.currently_due || [],
+        pastDue: account?.requirements?.past_due || [],
+        disabledReason: account?.requirements?.disabled_reason || "",
+      },
+    });
+  })
+);
+
+app.get(
+  "/api/account-login-link/:accountId",
+  runAsync(async (req, res) => {
+    if (!stripe) {
+      return res.status(501).json({ error: "Stripe is not configured on this server." });
+    }
+
+    const accountId = String(req.params.accountId || "").trim();
+    if (!accountId) {
+      return res.status(400).json({ error: "Missing connected account id." });
+    }
+
+    const loginLink = await stripe.accounts.createLoginLink(accountId);
+    return res.json({ url: loginLink.url });
+  })
+);
+
+app.post(
+  "/api/create-product",
+  runAsync(async (req, res) => {
+    if (!stripe) {
+      return res.status(501).json({ error: "Stripe is not configured on this server." });
+    }
+    const parsed = createProductSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: formatValidationError(parsed.error, "Please review the product fields and try again."),
+      });
+    }
+
+    const { productName, productDescription, productPrice, accountId } = parsed.data;
+    const product = await stripe.products.create({
+      name: productName,
+      description: productDescription || "",
+      metadata: { stripeAccount: accountId },
+    });
+
+    const price = await stripe.prices.create({
+      product: product.id,
+      unit_amount: productPrice,
+      currency: "usd",
+      metadata: { stripeAccount: accountId },
+    });
+
+    return res.status(201).json({
+      id: product.id,
+      productName: product.name,
+      productDescription: product.description || "",
+      productPrice,
+      priceId: price.id,
+    });
+  })
+);
+
+app.get(
+  "/api/products/:accountId",
+  runAsync(async (req, res) => {
+    if (!stripe) {
+      return res.status(501).json({ error: "Stripe is not configured on this server." });
+    }
+
+    const accountId = String(req.params.accountId || "").trim();
+    if (!accountId) {
+      return res.status(400).json({ error: "Missing connected account id." });
+    }
+
+    const prices = await stripe.prices.search({
+      query: `metadata['stripeAccount']:'${accountId}' AND active:'true'`,
+      expand: ["data.product"],
+      limit: 100,
+    });
+
+    return res.json(
+      prices.data.map((price) => ({
+        id: price.product.id,
+        name: price.product.name,
+        description: price.product.description,
+        price: price.unit_amount,
+        priceId: price.id,
+        period: price.recurring ? price.recurring.interval : null,
+        image: "https://i.imgur.com/6Mvijcm.png",
+      }))
+    );
+  })
+);
+
+app.post(
+  "/api/create-checkout-session",
+  runAsync(async (req, res) => {
+    if (!stripe) {
+      return res.status(501).json({ error: "Stripe is not configured on this server." });
+    }
+
+    const parsed = checkoutSessionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: formatValidationError(parsed.error, "Missing checkout details."),
+      });
+    }
+    const { priceId, accountId } = parsed.data;
+    const connectedStatus = await getStripeStatusForAccountId(accountId);
+    if (!connectedStatus.ready) {
+      return res.status(409).json({
+        error: "This connected account is not ready to accept payments yet.",
+      });
+    }
+
+    const price = await stripe.prices.retrieve(priceId);
+    const mode = price.type === "recurring" ? "subscription" : "payment";
+    const priceAmount = Number(price.unit_amount || 0);
+    const feeAmount = feeAmountFromSubtotal(priceAmount);
+
+    const sessionConfig = {
+      line_items: [{ price: priceId, quantity: 1 }],
+      mode,
+      success_url: `${BASE_URL}/done.html?session_id={CHECKOUT_SESSION_ID}&accountId=${encodeURIComponent(accountId)}`,
+      cancel_url: `${BASE_URL}/connect.html?accountId=${encodeURIComponent(accountId)}&checkout=cancelled`,
+    };
+
+    if (mode === "subscription") {
+      sessionConfig.subscription_data = {
+        application_fee_percent: Number((PLATFORM_FEE_RATE * 100).toFixed(2)),
+        transfer_data: { destination: accountId },
+      };
+    } else {
+      sessionConfig.payment_intent_data = {
+        application_fee_amount: feeAmount,
+        transfer_data: { destination: accountId },
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+    return res.redirect(303, session.url);
+  })
+);
 
 app.post(
   "/api/auth/register",
@@ -721,6 +1081,14 @@ app.post(
   "/api/owner/properties",
   requireRole("owner"),
   runAsync(async (req, res) => {
+    const stripeStatus = await getStripeStatusForUser(req.user);
+    if (!stripeStatus.ready) {
+      return res.status(409).json({
+        error: stripeSetupMessage(stripeStatus),
+        stripe_status: stripeStatus,
+      });
+    }
+
     const parsed = propertySchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
@@ -728,6 +1096,16 @@ app.post(
       });
     }
     const data = parsed.data;
+
+    if (data.status === "active") {
+      const stripeStatus = await getStripeStatusForUser(req.user);
+      if (!stripeStatus.ready) {
+        return res.status(409).json({
+          error: stripeSetupMessage(stripeStatus),
+          stripe_status: stripeStatus,
+        });
+      }
+    }
 
     if (data.max_term_months < data.min_term_months) {
       return res.status(400).json({
@@ -877,6 +1255,16 @@ app.patch(
       });
     }
 
+    if (parsed.data.status === "active") {
+      const stripeStatus = await getStripeStatusForUser(req.user);
+      if (!stripeStatus.ready) {
+        return res.status(409).json({
+          error: stripeSetupMessage(stripeStatus),
+          stripe_status: stripeStatus,
+        });
+      }
+    }
+
     const existing = db.prepare("SELECT * FROM properties WHERE id = ? AND owner_id = ?").get(propertyId, req.user.id);
     if (!existing) {
       return res.status(404).json({ error: "We couldn't find that listing in your account." });
@@ -991,6 +1379,8 @@ app.get(
         r.total_cents,
         r.platform_fee_cents,
         r.owner_payout_cents,
+        r.security_deposit_cents,
+        r.security_deposit_status,
         r.created_at,
         p.title AS property_title,
         u.name AS tenant_name,
@@ -1009,6 +1399,7 @@ app.get(
         total: usdFromCents(row.total_cents),
         platform_fee: usdFromCents(row.platform_fee_cents),
         owner_payout: usdFromCents(row.owner_payout_cents),
+        security_deposit: usdFromCents(row.security_deposit_cents || 0),
       })),
     });
   })
@@ -1035,9 +1426,112 @@ app.get("/api/owner/legal", requireRole("owner"), (_req, res) => {
         category: "Tax",
         updated_at: "2026-02-01",
       },
+      {
+        id: "tax-1099-export",
+        name: "1099 Export (CSV)",
+        category: "Tax",
+        updated_at: new Date().toISOString().slice(0, 10),
+      },
     ],
   });
 });
+
+app.get(
+  "/api/owner/tax/1099-summary",
+  requireRole("owner"),
+  runAsync(async (req, res) => {
+    const requestedYear = Number(req.query.year || new Date().getFullYear());
+    if (!Number.isInteger(requestedYear) || requestedYear < 2000 || requestedYear > 2100) {
+      return res.status(400).json({ error: "Please provide a valid tax year." });
+    }
+    const yearText = String(requestedYear);
+    const summary = db.prepare(`
+      SELECT
+        COUNT(*) AS reservation_count,
+        COALESCE(SUM(total_cents), 0) AS gross_cents,
+        COALESCE(SUM(platform_fee_cents), 0) AS platform_fee_cents,
+        COALESCE(SUM(owner_payout_cents), 0) AS owner_payout_cents
+      FROM reservations
+      WHERE owner_id = ?
+        AND status = 'confirmed'
+        AND substr(created_at, 1, 4) = ?
+    `).get(req.user.id, yearText);
+
+    return res.json({
+      year: requestedYear,
+      reservation_count: Number(summary?.reservation_count || 0),
+      gross_total: usdFromCents(summary?.gross_cents || 0),
+      platform_fees: usdFromCents(summary?.platform_fee_cents || 0),
+      owner_payout_total: usdFromCents(summary?.owner_payout_cents || 0),
+    });
+  })
+);
+
+app.get(
+  "/api/owner/tax/1099.csv",
+  requireRole("owner"),
+  runAsync(async (req, res) => {
+    const requestedYear = Number(req.query.year || new Date().getFullYear());
+    if (!Number.isInteger(requestedYear) || requestedYear < 2000 || requestedYear > 2100) {
+      return res.status(400).json({ error: "Please provide a valid tax year." });
+    }
+    const yearText = String(requestedYear);
+    const rows = db.prepare(`
+      SELECT
+        r.id,
+        r.created_at,
+        r.total_cents,
+        r.platform_fee_cents,
+        r.owner_payout_cents,
+        r.security_deposit_cents,
+        r.security_deposit_status,
+        p.title AS property_title,
+        u.name AS tenant_name,
+        u.email AS tenant_email
+      FROM reservations r
+      JOIN properties p ON p.id = r.property_id
+      JOIN users u ON u.id = r.tenant_id
+      WHERE r.owner_id = ?
+        AND r.status = 'confirmed'
+        AND substr(r.created_at, 1, 4) = ?
+      ORDER BY r.created_at ASC
+    `).all(req.user.id, yearText);
+
+    const header = [
+      "reservation_id",
+      "created_at",
+      "property_title",
+      "tenant_name",
+      "tenant_email",
+      "gross_usd",
+      "platform_fee_usd",
+      "owner_payout_usd",
+      "security_deposit_usd",
+      "security_deposit_status",
+    ];
+    const lines = [header.join(",")];
+    for (const row of rows) {
+      lines.push(
+        [
+          csvEscape(row.id),
+          csvEscape(row.created_at),
+          csvEscape(row.property_title),
+          csvEscape(row.tenant_name),
+          csvEscape(row.tenant_email),
+          csvEscape(usdFromCents(row.total_cents)),
+          csvEscape(usdFromCents(row.platform_fee_cents)),
+          csvEscape(usdFromCents(row.owner_payout_cents)),
+          csvEscape(usdFromCents(row.security_deposit_cents || 0)),
+          csvEscape(row.security_deposit_status || "none"),
+        ].join(",")
+      );
+    }
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename=\"fillspace-1099-${requestedYear}.csv\"`);
+    res.status(200).send(lines.join("\n"));
+  })
+);
 
 app.get(
   "/api/owner/inquiries",
@@ -1099,6 +1593,15 @@ app.post(
       db.prepare("UPDATE users SET stripe_account_id = ? WHERE id = ?").run(accountId, req.user.id);
     }
 
+    const stripeStatus = await getStripeStatusForAccountId(accountId);
+    if (stripeStatus.ready) {
+      return res.json({
+        stripe_account_id: accountId,
+        stripe_status: stripeStatus,
+        onboarding_url: "",
+      });
+    }
+
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
       refresh_url: `${BASE_URL}/dashboard-owner.html?stripe=refresh`,
@@ -1108,7 +1611,20 @@ app.post(
 
     return res.json({
       stripe_account_id: accountId,
+      stripe_status: stripeStatus,
       onboarding_url: accountLink.url,
+    });
+  })
+);
+
+app.get(
+  "/api/owner/stripe/status",
+  requireRole("owner"),
+  runAsync(async (req, res) => {
+    const stripeStatus = await getStripeStatusForUser(req.user);
+    return res.json({
+      stripe_status: stripeStatus,
+      message: stripeSetupMessage(stripeStatus),
     });
   })
 );
@@ -1117,6 +1633,7 @@ app.get(
   "/api/owner/dashboard",
   requireRole("owner"),
   runAsync(async (req, res) => {
+    const stripeStatus = await getStripeStatusForUser(req.user);
     const properties = db.prepare("SELECT * FROM properties WHERE owner_id = ? ORDER BY created_at DESC").all(req.user.id);
     const analytics = db.prepare(`
       SELECT
@@ -1134,6 +1651,8 @@ app.get(
         r.total_cents,
         r.platform_fee_cents,
         r.owner_payout_cents,
+        r.security_deposit_cents,
+        r.security_deposit_status,
         r.created_at,
         p.title AS property_title,
         u.name AS tenant_name
@@ -1147,7 +1666,9 @@ app.get(
 
     return res.json({
       user: req.user,
-      stripe_connected: Boolean(req.user.stripe_account_id),
+      stripe_connected: Boolean(stripeStatus.ready),
+      stripe_status: stripeStatus,
+      stripe_message: stripeSetupMessage(stripeStatus),
       analytics: {
         total_properties: analytics.total_properties || 0,
         active_properties: analytics.active_properties || 0,
@@ -1158,6 +1679,7 @@ app.get(
         total: usdFromCents(row.total_cents),
         platform_fee: usdFromCents(row.platform_fee_cents),
         owner_payout: usdFromCents(row.owner_payout_cents),
+        security_deposit: usdFromCents(row.security_deposit_cents || 0),
       })),
     });
   })
@@ -1238,6 +1760,7 @@ app.get(
         ...row,
         total: usdFromCents(row.total_cents),
         platform_fee: usdFromCents(row.platform_fee_cents),
+        security_deposit: usdFromCents(row.security_deposit_cents || 0),
       };
       if (row.end_date >= now && row.status !== "cancelled" && row.status !== "failed") {
         upcoming.push(normalized);
@@ -1271,6 +1794,8 @@ app.get(
         r.end_date,
         r.total_cents,
         r.platform_fee_cents,
+        r.security_deposit_cents,
+        r.security_deposit_status,
         r.created_at,
         p.title AS property_title,
         p.location AS property_location
@@ -1296,6 +1821,7 @@ app.get(
         ...row,
         total: usdFromCents(row.total_cents),
         platform_fee: usdFromCents(row.platform_fee_cents),
+        security_deposit: usdFromCents(row.security_deposit_cents || 0),
       })),
       favorites: favorites.map(normalizePropertyRow),
       finance: {
@@ -1340,6 +1866,12 @@ app.post(
         error: "This listing is not ready for checkout yet. Please try another listing.",
       });
     }
+    const ownerStripeStatus = await getStripeStatusForAccountId(owner.stripe_account_id);
+    if (!ownerStripeStatus.ready) {
+      return res.status(409).json({
+        error: "This owner is still finishing payout onboarding. Please try another listing for now.",
+      });
+    }
 
     const durationMonths = calculateDurationInMonths(data.startDate, data.endDate);
     if (!durationMonths) {
@@ -1352,15 +1884,20 @@ app.post(
     }
 
     const totalCents = property.monthly_price_cents * durationMonths;
-    const platformFeeCents = Math.round(totalCents * PLATFORM_FEE_RATE);
-    const ownerPayoutCents = totalCents - platformFeeCents;
+    const securityDepositCents = SECURITY_DEPOSIT_CENTS;
+    const chargeSubtotalCents = totalCents;
+    const platformFeeCents = feeAmountFromSubtotal(chargeSubtotalCents);
+    const ownerPayoutCents = chargeSubtotalCents - platformFeeCents;
+    const totalChargedNowCents = chargeSubtotalCents + securityDepositCents;
+    const applicationFeeAmount = platformFeeCents + securityDepositCents;
 
     const reservationInsert = db.prepare(`
       INSERT INTO reservations (
         property_id, tenant_id, owner_id, start_date, end_date, status,
-        total_cents, platform_fee_cents, owner_payout_cents
+        total_cents, platform_fee_cents, owner_payout_cents,
+        security_deposit_cents, security_deposit_status
       )
-      VALUES (?, ?, ?, ?, ?, 'payment_pending', ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, 'payment_pending', ?, ?, ?, ?, ?)
     `);
     const insertResult = reservationInsert.run(
       property.id,
@@ -1370,7 +1907,9 @@ app.post(
       data.endDate,
       totalCents,
       platformFeeCents,
-      ownerPayoutCents
+      ownerPayoutCents,
+      securityDepositCents,
+      securityDepositCents > 0 ? "pending" : "none"
     );
 
     const reservationId = Number(insertResult.lastInsertRowid);
@@ -1391,9 +1930,24 @@ app.post(
             },
           },
         },
+        ...(securityDepositCents > 0
+          ? [
+              {
+                quantity: 1,
+                price_data: {
+                  currency: "usd",
+                  unit_amount: securityDepositCents,
+                  product_data: {
+                    name: "Security deposit (refundable)",
+                    description: "Held by FillSpace and released after move-out review.",
+                  },
+                },
+              },
+            ]
+          : []),
       ],
       payment_intent_data: {
-        application_fee_amount: platformFeeCents,
+        application_fee_amount: applicationFeeAmount,
         transfer_data: {
           destination: owner.stripe_account_id,
         },
@@ -1421,6 +1975,8 @@ app.post(
       reservation_id: reservationId,
       checkout_url: session.url,
       total: currency(totalCents),
+      security_deposit: currency(securityDepositCents),
+      charged_now: currency(totalChargedNowCents),
       platform_fee: currency(platformFeeCents),
       owner_payout: currency(ownerPayoutCents),
     });
@@ -1449,12 +2005,15 @@ app.get(
       return res.status(400).json({ error: "Please choose an end date that is after the start date." });
     }
     const totalCents = property.monthly_price_cents * months;
-    const platformFeeCents = Math.round(totalCents * PLATFORM_FEE_RATE);
+    const securityDepositCents = SECURITY_DEPOSIT_CENTS;
+    const platformFeeCents = feeAmountFromSubtotal(totalCents);
     const ownerPayoutCents = totalCents - platformFeeCents;
 
     return res.json({
       months,
       total: usdFromCents(totalCents),
+      security_deposit: usdFromCents(securityDepositCents),
+      charged_now: usdFromCents(totalCents + securityDepositCents),
       platform_fee: usdFromCents(platformFeeCents),
       owner_payout: usdFromCents(ownerPayoutCents),
     });

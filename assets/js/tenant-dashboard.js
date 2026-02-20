@@ -175,7 +175,11 @@ function wireBookingForm() {
         return;
       }
       if (quoteText instanceof HTMLElement) {
-        quoteText.textContent = `${payload.months} month(s): total ${formatCurrency(payload.total)} • platform fee ${formatCurrency(payload.platform_fee)} • owner payout ${formatCurrency(payload.owner_payout)}`;
+        const depositText =
+          Number(payload.security_deposit || 0) > 0
+            ? ` • security deposit ${formatCurrency(payload.security_deposit)}`
+            : "";
+        quoteText.textContent = `${payload.months} month(s): booking total ${formatCurrency(payload.total)}${depositText} • charged now ${formatCurrency(payload.charged_now || payload.total)} • platform fee ${formatCurrency(payload.platform_fee)}`;
       }
     } catch {
       if (quoteText instanceof HTMLElement) {

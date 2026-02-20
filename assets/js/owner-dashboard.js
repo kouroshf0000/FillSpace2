@@ -477,8 +477,37 @@ async function loadOwnerOverview() {
   setText("metric-owner-payout", formatCurrency(analytics.summary.owner_payouts || 0));
 
   const stripeStatus = document.getElementById("owner-stripe-status");
+  const connectStripeBtn = document.getElementById("connect-stripe-btn");
+  const propertySubmitBtn = document.getElementById("owner-property-submit");
+  const dashboardMessage = document.getElementById("owner-property-message");
+  const stripeDetails = dashboard?.stripe_status || {};
   if (stripeStatus) {
-    stripeStatus.textContent = dashboard.stripe_connected ? "Stripe connected" : "Stripe not connected";
+    if (!stripeDetails.connected) {
+      stripeStatus.textContent = "Stripe not connected";
+    } else if (stripeDetails.ready) {
+      stripeStatus.textContent = "Stripe connected";
+    } else {
+      stripeStatus.textContent = "Stripe onboarding incomplete";
+    }
+  }
+  if (connectStripeBtn instanceof HTMLButtonElement) {
+    if (!stripeDetails.connected) {
+      connectStripeBtn.textContent = "Connect Stripe";
+    } else if (stripeDetails.ready) {
+      connectStripeBtn.textContent = "Stripe Connected";
+    } else {
+      connectStripeBtn.textContent = "Continue Stripe onboarding";
+    }
+  }
+  if (propertySubmitBtn instanceof HTMLButtonElement) {
+    propertySubmitBtn.disabled = Boolean(!stripeDetails.ready);
+  }
+  if (!stripeDetails.ready && dashboardMessage instanceof HTMLElement) {
+    setDashboardMessage(
+      dashboardMessage,
+      dashboard.stripe_message || "Finish Stripe onboarding before listing properties.",
+      true
+    );
   }
 }
 
@@ -612,6 +641,23 @@ async function loadOwnerLegal() {
     const item = document.createElement("li");
     item.textContent = `${doc.name} (${doc.category}) · Updated ${doc.updated_at}`;
     list.appendChild(item);
+  }
+
+  try {
+    const taxRes = await fetch("/api/owner/tax/1099-summary");
+    if (!taxRes.ok) {
+      return;
+    }
+    const tax = await taxRes.json();
+    const csvLink = document.createElement("a");
+    csvLink.href = `/api/owner/tax/1099.csv?year=${encodeURIComponent(tax.year)}`;
+    csvLink.textContent = `Download ${tax.year} 1099 CSV (${tax.reservation_count} confirmed bookings)`;
+    csvLink.className = "inline-link";
+    const wrapper = document.createElement("li");
+    wrapper.appendChild(csvLink);
+    list.appendChild(wrapper);
+  } catch {
+    // Tax summary is optional if endpoint is unavailable.
   }
 }
 
