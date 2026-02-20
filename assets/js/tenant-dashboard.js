@@ -54,16 +54,20 @@ function wireMobileMenu() {
     return;
   }
 
+  const setMenuState = (isOpen) => {
+    nav.classList.toggle("open", isOpen);
+    menuToggle.setAttribute("aria-expanded", String(isOpen));
+    document.body.classList.toggle("menu-open", isOpen);
+  };
+
   menuToggle.addEventListener("click", () => {
     const willOpen = !nav.classList.contains("open");
-    nav.classList.toggle("open", willOpen);
-    menuToggle.setAttribute("aria-expanded", String(willOpen));
+    setMenuState(willOpen);
   });
 
   nav.querySelectorAll("a").forEach((link) => {
     link.addEventListener("click", () => {
-      nav.classList.remove("open");
-      menuToggle.setAttribute("aria-expanded", "false");
+      setMenuState(false);
     });
   });
 
@@ -75,8 +79,13 @@ function wireMobileMenu() {
       !target.closest(".menu-toggle") &&
       nav.classList.contains("open")
     ) {
-      nav.classList.remove("open");
-      menuToggle.setAttribute("aria-expanded", "false");
+      setMenuState(false);
+    }
+  });
+
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 860 && nav.classList.contains("open")) {
+      setMenuState(false);
     }
   });
 }
@@ -372,6 +381,8 @@ function renderReservationTables() {
     tr.innerHTML = `<td colspan="4">No reservation history yet.</td>`;
     historyBody.appendChild(tr);
   }
+  applyResponsiveTableLabels("#tenant-upcoming-table");
+  applyResponsiveTableLabels("#tenant-history-table");
 }
 
 function renderFavorites() {
@@ -411,6 +422,7 @@ function renderFinanceTable() {
     tr.innerHTML = `<td colspan="5">No transactions yet.</td>`;
     tbody.appendChild(tr);
   }
+  applyResponsiveTableLabels("#tenant-finance-table");
 }
 
 function renderBookingPropertyOptions() {
@@ -537,6 +549,29 @@ function friendlyErrorMessage(rawMessage, fallbackMessage) {
     return fallbackMessage;
   }
   return message;
+}
+
+function applyResponsiveTableLabels(selector) {
+  const table = document.querySelector(selector);
+  if (!(table instanceof HTMLTableElement)) {
+    return;
+  }
+  const headers = Array.from(table.querySelectorAll("thead th")).map((node) =>
+    String(node.textContent || "").trim()
+  );
+  table.querySelectorAll("tbody tr").forEach((row) => {
+    const cells = Array.from(row.children).filter((cell) => cell instanceof HTMLTableCellElement);
+    cells.forEach((cell, index) => {
+      if (!(cell instanceof HTMLTableCellElement)) {
+        return;
+      }
+      if (cell.hasAttribute("colspan")) {
+        cell.removeAttribute("data-label");
+        return;
+      }
+      cell.dataset.label = headers[index] || "";
+    });
+  });
 }
 
 function escapeHtml(value) {
