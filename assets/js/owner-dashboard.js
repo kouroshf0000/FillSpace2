@@ -35,6 +35,8 @@ const ownerState = {
   wireConnectStripe();
   wirePropertyForm();
   wirePropertyTableActions();
+  wireOwnerRequestActions();
+  wireOwnerDocumentForm();
   setPropertyFormMode(null);
   handleStripeReturnState();
 
@@ -312,6 +314,36 @@ function wirePropertyTableActions() {
       return;
     }
 
+    if (action === "toggle-requests") {
+      const property = ownerState.properties.find((item) => item.id === propertyId);
+      if (!property) {
+        return;
+      }
+      const nextPaused = !Boolean(property.requests_paused);
+      setDashboardMessage(message, `${nextPaused ? "Pausing" : "Resuming"} requests for ${property.title}...`);
+      try {
+        const res = await fetch(`/api/owner/properties/${propertyId}/request-settings`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paused: nextPaused }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setDashboardMessage(
+            message,
+            friendlyErrorMessage(data.error, "We couldn't update request settings right now."),
+            true
+          );
+          return;
+        }
+        setDashboardMessage(message, `${property.title} request state updated.`);
+        await loadAllDashboardData();
+      } catch {
+        setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
+      }
+      return;
+    }
+
     if (action === "delete") {
       const property = ownerState.properties.find((item) => item.id === propertyId);
       if (!property) {
@@ -352,6 +384,204 @@ function wirePropertyTableActions() {
   });
 }
 
+function wireOwnerRequestActions() {
+  const tbody = document.querySelector("#owner-requests-table tbody");
+  const message = document.getElementById("owner-property-message");
+  if (!(tbody instanceof HTMLElement)) {
+    return;
+  }
+
+  tbody.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+    const actionButton = target.closest("[data-owner-request-action]");
+    if (!(actionButton instanceof HTMLButtonElement)) {
+      return;
+    }
+    const reservationId = Number(actionButton.dataset.requestId);
+    if (!Number.isFinite(reservationId)) {
+      return;
+    }
+    const action = String(actionButton.dataset.ownerRequestAction || "");
+
+    if (action === "accept" || action === "decline") {
+      setDashboardMessage(message, `${action === "accept" ? "Accepting" : "Declining"} booking request...`);
+      try {
+        const res = await fetch(`/api/owner/booking-requests/${reservationId}/respond`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision: action }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setDashboardMessage(
+            message,
+            friendlyErrorMessage(payload.error, "We couldn't update this request right now."),
+            true
+          );
+          return;
+        }
+        setDashboardMessage(
+          message,
+          action === "accept"
+            ? "Request accepted. Tenant received payment link."
+            : "Request declined."
+        );
+        await loadAllDashboardData();
+      } catch {
+        setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
+      }
+      return;
+    }
+
+    if (action === "cancel") {
+      const confirmed = window.confirm("Cancel this paid reservation and issue full refund?");
+      if (!confirmed) {
+        return;
+      }
+      setDashboardMessage(message, "Cancelling reservation and processing refund...");
+      try {
+        const res = await fetch(`/api/owner/reservations/${reservationId}/cancel`, {
+          method: "POST",
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setDashboardMessage(
+            message,
+            friendlyErrorMessage(payload.error, "We couldn't cancel this reservation right now."),
+            true
+          );
+          return;
+        }
+        setDashboardMessage(message, "Reservation cancelled and refund initiated.");
+        await loadAllDashboardData();
+      } catch {
+        setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
+      }
+    }
+  });
+}
+
+function wireOwnerDocumentForm() {
+  const form = document.getElementById("owner-doc-form");
+  const reservationSelect = document.getElementById("owner-doc-reservation");
+  const message = document.getElementById("owner-doc-message");
+  if (!(form instanceof HTMLFormElement) || !(reservationSelect instanceof HTMLSelectElement)) {
+    return;
+  }
+
+  reservationSelect.addEventListener("change", () => {
+    const reservationId = Number(reservationSelect.value);
+    if (Number.isFinite(reservationId)) {
+      loadOwnerDocumentsForReservation(reservationId).catch(() => {});
+    }
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const reservationId = Number(reservationSelect.value);
+    if (!Number.isFinite(reservationId)) {
+      setDashboardMessage(message, "Please select a reservation.", true);
+      return;
+    }
+    const payload = {
+      party: "owner",
+      document_type: String(document.getElementById("owner-doc-type")?.value || "").trim(),
+      file_name: String(document.getElementById("owner-doc-name")?.value || "").trim(),
+      file_url: String(document.getElementById("owner-doc-url")?.value || "").trim(),
+      mime_type: "",
+      size_bytes: 0,
+      accepted_terms: Boolean(document.getElementById("owner-doc-terms")?.checked),
+    };
+    setDashboardMessage(message, "Uploading document...");
+    try {
+      const res = await fetch(`/api/reservations/${reservationId}/documents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDashboardMessage(
+          message,
+          friendlyErrorMessage(data.error, "We couldn't upload this document right now."),
+          true
+        );
+        return;
+      }
+      form.reset();
+      setDashboardMessage(message, "Document uploaded successfully.");
+      await loadAllDashboardData();
+      await loadOwnerDocumentsForReservation(reservationId);
+    } catch {
+      setDashboardMessage(message, "We couldn't reach the server. Please try again.", true);
+    }
+  });
+}
+
+function renderOwnerDocumentReservationOptions(allRows) {
+  const reservationSelect = document.getElementById("owner-doc-reservation");
+  if (!(reservationSelect instanceof HTMLSelectElement)) {
+    return;
+  }
+  const eligible = (allRows || []).filter((row) =>
+    ["documents_pending", "documents_under_review", "documents_incomplete", "booking_confirmed", "payment_completed"].includes(
+      String(row.status || "")
+    )
+  );
+  const previousValue = reservationSelect.value;
+  reservationSelect.innerHTML = `<option value="">Select reservation</option>`;
+  for (const row of eligible) {
+    const option = document.createElement("option");
+    option.value = String(row.id);
+    option.textContent = `${row.property_title || "Property"} · ${row.start_date} → ${row.end_date}`;
+    reservationSelect.appendChild(option);
+  }
+  if (previousValue && Array.from(reservationSelect.options).some((option) => option.value === previousValue)) {
+    reservationSelect.value = previousValue;
+  } else if (eligible.length) {
+    reservationSelect.value = String(eligible[0].id);
+  }
+  if (reservationSelect.value) {
+    loadOwnerDocumentsForReservation(Number(reservationSelect.value)).catch(() => {});
+  } else {
+    const list = document.getElementById("owner-doc-list");
+    if (list instanceof HTMLElement) {
+      list.innerHTML = "<li>No document-required reservations yet.</li>";
+    }
+  }
+}
+
+async function loadOwnerDocumentsForReservation(reservationId) {
+  const list = document.getElementById("owner-doc-list");
+  if (!(list instanceof HTMLElement) || !Number.isFinite(reservationId)) {
+    return;
+  }
+  list.innerHTML = "";
+  const res = await fetch(`/api/reservations/${reservationId}/documents`);
+  if (!res.ok) {
+    list.innerHTML = "<li>Unable to load documents.</li>";
+    return;
+  }
+  const payload = await res.json();
+  const documents = payload.documents || [];
+  if (!documents.length) {
+    list.innerHTML = "<li>No documents uploaded yet.</li>";
+    return;
+  }
+  for (const doc of documents) {
+    const item = document.createElement("li");
+    item.innerHTML = `${escapeHtml(doc.party || "")}: <a class="inline-link" href="${escapeAttribute(
+      doc.file_url || "#"
+    )}" target="_blank" rel="noopener noreferrer">${escapeHtml(doc.file_name || "Document")}</a> (${escapeHtml(
+      doc.document_type || "Document"
+    )})`;
+    list.appendChild(item);
+  }
+}
+
 function formPayloadFromData(formData) {
   return {
     title: String(formData.get("title") || "").trim(),
@@ -368,6 +598,7 @@ function formPayloadFromData(formData) {
     status: String(formData.get("status") || "active"),
     utilities: String(formData.get("utilities") || "").trim(),
     buildout: String(formData.get("buildout") || "").trim(),
+    cancellation_policy: String(formData.get("cancellation_policy") || "moderate").trim() || "moderate",
     description: String(formData.get("description") || "").trim(),
     amenities: formData.getAll("amenities").filter(Boolean),
   };
@@ -395,6 +626,7 @@ function fillPropertyForm(form, property) {
   setField("status", property.status);
   setField("utilities", property.utilities);
   setField("buildout", property.buildout);
+  setField("cancellation_policy", property.cancellation_policy || "moderate");
   setField("description", property.description);
 
   const amenitySet = new Set(Array.isArray(property.amenities) ? property.amenities : []);
@@ -447,6 +679,7 @@ async function loadAllDashboardData() {
   const results = await Promise.allSettled([
     loadOwnerOverview(),
     loadOwnerProperties(),
+    loadOwnerRequests(),
     loadOwnerAnalytics(),
     loadOwnerFinance(),
     loadOwnerInquiries(),
@@ -509,6 +742,33 @@ async function loadOwnerOverview() {
       true
     );
   }
+
+  const notificationsList = document.getElementById("owner-notifications-list");
+  if (notificationsList instanceof HTMLElement) {
+    notificationsList.innerHTML = "";
+    try {
+      const notificationsRes = await fetch("/api/notifications");
+      if (notificationsRes.ok) {
+        const notificationsPayload = await notificationsRes.json();
+        const rows = (notificationsPayload.notifications || []).slice(0, 5);
+        if (!rows.length) {
+          const item = document.createElement("li");
+          item.textContent = "No recent notifications.";
+          notificationsList.appendChild(item);
+        } else {
+          for (const row of rows) {
+            const item = document.createElement("li");
+            item.textContent = `${String(row.created_at || "").slice(0, 16).replace("T", " ")} · ${row.message}`;
+            notificationsList.appendChild(item);
+          }
+        }
+      }
+    } catch {
+      const item = document.createElement("li");
+      item.textContent = "Notifications are temporarily unavailable.";
+      notificationsList.appendChild(item);
+    }
+  }
 }
 
 async function loadOwnerProperties() {
@@ -528,6 +788,7 @@ async function loadOwnerProperties() {
   for (const property of ownerState.properties) {
     const statusLabel = formatStatus(property.status);
     const toggleLabel = property.status === "active" ? "Pause" : "Activate";
+    const requestToggleLabel = property.requests_paused ? "Resume requests" : "Pause requests";
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${escapeHtml(property.title)}</td>
@@ -541,6 +802,9 @@ async function loadOwnerProperties() {
           </button>
           <button class="table-action-btn" type="button" data-owner-action="toggle-status" data-property-id="${property.id}">
             ${toggleLabel}
+          </button>
+          <button class="table-action-btn" type="button" data-owner-action="toggle-requests" data-property-id="${property.id}">
+            ${requestToggleLabel}
           </button>
           <button class="table-action-btn danger" type="button" data-owner-action="delete" data-property-id="${property.id}">
             Delete
@@ -557,6 +821,73 @@ async function loadOwnerProperties() {
     tbody.appendChild(row);
   }
   applyResponsiveTableLabels("#owner-properties-table");
+}
+
+async function loadOwnerRequests() {
+  const res = await fetch("/api/owner/booking-requests");
+  if (!res.ok) {
+    notifyDashboardError("Unable to load booking requests.");
+    return;
+  }
+  const payload = await res.json();
+  const allRows = [
+    ...(payload.pending_requests || []),
+    ...(payload.active_workflow || []),
+    ...(payload.archived || []),
+  ];
+  const tbody = document.querySelector("#owner-requests-table tbody");
+  if (!(tbody instanceof HTMLElement)) {
+    return;
+  }
+  tbody.innerHTML = "";
+
+  for (const row of allRows) {
+    const deadline =
+      row.status === "request_submitted"
+        ? String(row.response_deadline_at || "")
+        : row.status === "payment_pending"
+          ? String(row.payment_deadline_at || "")
+          : "";
+    const actions = [];
+    if (row.status === "request_submitted") {
+      actions.push(
+        `<button class="table-action-btn" type="button" data-owner-request-action="accept" data-request-id="${row.id}">Accept</button>`
+      );
+      actions.push(
+        `<button class="table-action-btn danger" type="button" data-owner-request-action="decline" data-request-id="${row.id}">Decline</button>`
+      );
+    } else if (
+      ["payment_completed", "documents_pending", "documents_under_review", "documents_incomplete", "booking_confirmed"].includes(
+        row.status
+      )
+    ) {
+      actions.push(
+        `<button class="table-action-btn danger" type="button" data-owner-request-action="cancel" data-request-id="${row.id}">Cancel + Refund</button>`
+      );
+    } else {
+      actions.push(`<span class="table-muted">No actions</span>`);
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(String(row.created_at || "").slice(0, 16).replace("T", " "))}</td>
+      <td>${escapeHtml(row.tenant_name || "")}<br><small>${escapeHtml(row.tenant_email || "")}</small></td>
+      <td>${escapeHtml(row.property_title || "")}</td>
+      <td>${escapeHtml(row.start_date || "")} → ${escapeHtml(row.end_date || "")}</td>
+      <td>${statusBadge(row.status)}</td>
+      <td>${escapeHtml(formatDateTime(deadline))}${row.auto_accepted ? " (auto)" : ""}</td>
+      <td><div class="property-row-actions">${actions.join("")}</div></td>
+    `;
+    tbody.appendChild(tr);
+  }
+
+  if (!tbody.children.length) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="7">No booking requests yet.</td>`;
+    tbody.appendChild(tr);
+  }
+  applyResponsiveTableLabels("#owner-requests-table");
+  renderOwnerDocumentReservationOptions(allRows);
 }
 
 async function loadOwnerAnalytics() {
@@ -715,6 +1046,18 @@ function formatCurrency(value) {
   });
 }
 
+function formatDateTime(rawIso) {
+  const raw = String(rawIso || "");
+  if (!raw) {
+    return "—";
+  }
+  const date = new Date(raw);
+  if (Number.isNaN(date.valueOf())) {
+    return raw;
+  }
+  return date.toLocaleString();
+}
+
 function formatStatus(status) {
   const raw = String(status || "").trim();
   if (!raw) {
@@ -776,5 +1119,9 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replaceAll("`", "&#96;");
 }
 

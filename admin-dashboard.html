@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | FillSpace</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="page-dashboard">
+  <header class="site-header">
+    <div class="container nav-row">
+      <a class="brand" href="index.html" aria-label="FillSpace home">
+        <span class="brand-mark">F</span>
+        <span class="brand-text">FillSpace</span>
+      </a>
+      <div class="nav-cta-group">
+        <button class="btn btn-secondary btn-small" id="admin-logout-btn" type="button">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="section dashboard-section">
+    <div class="container">
+      <article class="dashboard-panel active">
+        <div class="panel-header">
+          <h3>Admin review queue</h3>
+          <p id="admin-welcome">Loading...</p>
+        </div>
+        <p id="admin-message" class="dashboard-message" role="status" aria-live="polite"></p>
+        <div class="table-wrap">
+          <table class="dashboard-table" id="admin-review-table">
+            <thead>
+              <tr>
+                <th>Reservation</th>
+                <th>Property</th>
+                <th>Tenant</th>
+                <th>Owner</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <script src="assets/js/admin-dashboard.js" defer></script>
+</body>
+</html>

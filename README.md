@@ -4,9 +4,11 @@ A multi-page FillSpace MVP with:
 
 - polished marketing website (Airbnb-style UX patterns),
 - role-based owner and tenant authentication,
+- admin demo override authentication,
 - owner and tenant dashboards,
 - dynamic property API-backed browse experience,
-- Stripe Connect marketplace payment flow (12% platform fee model).
+- Stripe Connect marketplace payment flow (12% platform fee model),
+- request-first booking lifecycle (owner review within 48h, auto-accept fallback, email payment links, docs workflow).
 
 ## Pages
 
@@ -18,6 +20,8 @@ A multi-page FillSpace MVP with:
 - `tenant-login.html` - Tenant authentication portal
 - `dashboard-owner.html` - Owner dashboard
 - `dashboard-tenant.html` - Tenant dashboard
+- `admin-login.html` - Admin authentication portal
+- `admin-dashboard.html` - Admin review and override dashboard
 - `connect.html` - Stripe Connect sample dashboard
 - `storefront.html` - Connected account storefront sample
 - `done.html` - Stripe checkout completion page
@@ -69,6 +73,13 @@ Required for marketplace payments:
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET` (optional but recommended for webhook signature validation)
 - `SECURITY_DEPOSIT_USD` (optional; defaults to `500`)
+- `DEFAULT_TAX_RATE_BPS` (optional; defaults to `625`)
+
+Optional admin override credentials:
+
+- `ADMIN_DEMO_EMAIL`
+- `ADMIN_DEMO_PASSWORD`
+- `ADMIN_DEMO_NAME`
 
 Required for direct inquiry delivery and owner listing notification emails:
 
@@ -101,13 +112,16 @@ Seeded local demo users:
 
 - Owner: `owner@fillspace.com` / `Owner123!`
 - Tenant: `tenant@fillspace.com` / `Tenant123!`
+- Admin: `admin@fillspace.com` / `Admin123!`
 
 ## Backend highlights
 
-- **Auth**: JWT in httpOnly cookie (`owner` and `tenant` roles)
+- **Auth**: JWT in httpOnly cookie (`owner`, `tenant`, and demo `admin` roles)
 - **Owner dashboard**:
   - full property creation form,
   - listing management,
+  - request pause toggle and cancellation policy controls,
+  - booking request accept/decline actions,
   - immediate publish to browse results on creation,
   - optional email alert when new listings are published,
   - analytics snapshot,
@@ -116,17 +130,20 @@ Seeded local demo users:
   - Stripe Connect onboarding entrypoint.
 - **Tenant dashboard**:
   - upcoming reservations,
+  - request submission/edit/cancel workflow,
+  - request timeline with response/payment deadlines,
   - reservation history,
   - finance/tax table,
   - watchlist/favorites management,
-  - Stripe checkout booking flow.
+  - document upload flow (tenant side).
 - **Public browse**:
   - reads from `/api/properties`,
   - includes owner-added properties automatically.
 - **Payments**:
-  - Stripe Checkout with Connect transfer destination,
-  - 12% application/platform fee retained by FillSpace,
-  - owner payout routed through Stripe destination account.
+  - request accepted -> email payment link -> Stripe Checkout,
+  - first month charged up front (plus estimated taxes),
+  - 12% platform fee retained by FillSpace,
+  - owner payout released 3 days after move-in via scheduled transfer.
 
 ## Key API routes
 
@@ -138,11 +155,26 @@ Seeded local demo users:
 - `GET /api/properties`
 - `POST /api/owner/properties`
 - `GET /api/owner/dashboard`
+- `GET /api/owner/booking-requests`
+- `POST /api/owner/booking-requests/:id/respond`
+- `POST /api/owner/reservations/:id/cancel`
 - `GET /api/owner/inquiries`
 - `GET /api/tenant/dashboard`
+- `GET /api/tenant/booking-requests`
+- `POST /api/booking-requests`
+- `PATCH /api/booking-requests/:id`
+- `POST /api/booking-requests/:id/cancel`
 - `POST /api/tenant/favorites/:propertyId`
-- `POST /api/payments/checkout`
+- `GET /api/payments/checkout-link/:token`
 - `POST /api/payments/webhook`
+- `GET /api/notifications`
+- `POST /api/notifications/:id/read`
+- `GET /api/reservations/:id/documents`
+- `POST /api/reservations/:id/documents`
+- `GET /api/reservations/:id/audit.csv`
+- `GET /api/admin/reservations/pending-review`
+- `POST /api/admin/reservations/:id/documents/review`
+- `POST /api/admin/reservations/:id/status`
 - `POST /api/create-connect-account`
 - `POST /api/create-account-link`
 - `GET /api/account-status/:accountId`

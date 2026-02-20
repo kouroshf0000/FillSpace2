@@ -1010,11 +1010,45 @@ textarea:focus {
   border-color: rgba(var(--blue-accent-rgb), 0.22);
 }
 
+.status-badge.is-request-submitted {
+  background: rgba(53, 81, 114, 0.1);
+  color: var(--blue-accent);
+  border-color: rgba(var(--blue-accent-rgb), 0.22);
+}
+
+.status-badge.is-request-declined,
+.status-badge.is-booking-cancelled,
+.status-badge.is-documents-rejected {
+  background: rgba(167, 32, 32, 0.09);
+  color: #8e1d1d;
+  border-color: rgba(167, 32, 32, 0.22);
+}
+
+.status-badge.is-payment-completed,
+.status-badge.is-booking-confirmed {
+  background: rgba(29, 95, 42, 0.11);
+  color: #1d5f2a;
+  border-color: rgba(29, 95, 42, 0.22);
+}
+
+.status-badge.is-documents-pending,
+.status-badge.is-documents-under-review,
+.status-badge.is-documents-incomplete {
+  background: rgba(167, 119, 0, 0.1);
+  color: #7a5600;
+  border-color: rgba(167, 119, 0, 0.22);
+}
+
 .status-badge.is-cancelled,
 .status-badge.is-failed {
   background: rgba(167, 32, 32, 0.09);
   color: #8e1d1d;
   border-color: rgba(167, 32, 32, 0.22);
+}
+
+.table-muted {
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .ask-layout {
