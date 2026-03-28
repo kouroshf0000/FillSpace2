@@ -29,7 +29,6 @@ const ownerState = {
   if (ownerName) ownerName.textContent = user.name;
   if (ownerCompany) ownerCompany.textContent = user.company || user.email;
 
-  initServerStatusIndicator();
   wireMobileMenu();
   wireDashboardNav();
   wireLogout();
@@ -41,37 +40,6 @@ const ownerState = {
 
   await loadAllDashboardData();
 })();
-
-function initServerStatusIndicator() {
-  const navRow = document.querySelector(".nav-row");
-  if (!(navRow instanceof HTMLElement)) {
-    return;
-  }
-  if (navRow.querySelector(".server-status-badge")) {
-    return;
-  }
-
-  const badge = document.createElement("span");
-  badge.className = "server-status-badge is-checking";
-  badge.textContent = "Server: checking";
-  navRow.appendChild(badge);
-
-  const setState = (state) => {
-    badge.classList.remove("is-checking", "is-online", "is-offline");
-    if (state === "online") {
-      badge.classList.add("is-online");
-      badge.textContent = "Server: online";
-      return;
-    }
-    badge.classList.add("is-offline");
-    badge.textContent = "Server: offline";
-  };
-
-  fetch("/api/health", { cache: "no-store" })
-    .then((res) => (res.ok ? res.json() : Promise.reject(new Error("offline"))))
-    .then(() => setState("online"))
-    .catch(() => setState("offline"));
-}
 
 function wireMobileMenu() {
   const nav = document.querySelector(".site-nav");
@@ -337,7 +305,6 @@ function wirePropertyTableActions() {
 }
 
 function formPayloadFromData(formData) {
-  const amenitiesRaw = String(formData.get("amenities") || "");
   return {
     title: String(formData.get("title") || "").trim(),
     location: String(formData.get("location") || "").trim(),
@@ -349,15 +316,12 @@ function formPayloadFromData(formData) {
     max_term_months: Number(formData.get("max_term_months") || 0),
     availability_text: String(formData.get("availability_text") || "").trim(),
     image_url: String(formData.get("image_url") || "").trim(),
-    best_for: String(formData.get("best_for") || "").trim(),
+    best_for: formData.getAll("best_for").filter(Boolean).join(", "),
     status: String(formData.get("status") || "active"),
     utilities: String(formData.get("utilities") || "").trim(),
     buildout: String(formData.get("buildout") || "").trim(),
     description: String(formData.get("description") || "").trim(),
-    amenities: amenitiesRaw
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean),
+    amenities: formData.getAll("amenities").filter(Boolean),
   };
 }
 
@@ -380,12 +344,20 @@ function fillPropertyForm(form, property) {
   setField("max_term_months", property.max_term_months);
   setField("availability_text", property.availability_text);
   setField("image_url", property.image_url);
-  setField("best_for", property.best_for);
   setField("status", property.status);
   setField("utilities", property.utilities);
   setField("buildout", property.buildout);
   setField("description", property.description);
-  setField("amenities", Array.isArray(property.amenities) ? property.amenities.join(", ") : "");
+
+  const amenitySet = new Set(Array.isArray(property.amenities) ? property.amenities : []);
+  form.querySelectorAll('input[name="amenities"]').forEach((cb) => {
+    if (cb instanceof HTMLInputElement) cb.checked = amenitySet.has(cb.value);
+  });
+
+  const bestForSet = new Set(String(property.best_for || "").split(",").map((s) => s.trim()).filter(Boolean));
+  form.querySelectorAll('input[name="best_for"]').forEach((cb) => {
+    if (cb instanceof HTMLInputElement) cb.checked = bestForSet.has(cb.value);
+  });
 }
 
 function resetPropertyForm(form) {
@@ -482,7 +454,7 @@ async function loadOwnerProperties() {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${escapeHtml(property.title)}</td>
-      <td>${escapeHtml(statusLabel)}</td>
+      <td>${statusBadge(property.status)}</td>
       <td>${formatCurrency(property.monthly_price)}</td>
       <td>${property.min_term_months}-${property.max_term_months} months</td>
       <td>
@@ -558,7 +530,7 @@ async function loadOwnerFinance() {
     row.innerHTML = `
       <td>${escapeHtml((tx.created_at || "").slice(0, 10))}</td>
       <td>${escapeHtml(tx.property_title || "")}</td>
-      <td>${escapeHtml(tx.status || "")}</td>
+      <td>${statusBadge(tx.status)}</td>
       <td>${formatCurrency(tx.total || 0)}</td>
       <td>${formatCurrency(tx.platform_fee || 0)}</td>
       <td>${formatCurrency(tx.owner_payout || 0)}</td>
@@ -651,6 +623,12 @@ function formatStatus(status) {
     return "Unknown";
   }
   return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
+
+function statusBadge(status) {
+  const raw = String(status || "").toLowerCase().replace(/_/g, "-");
+  const label = String(status || "").replace(/_/g, " ").replace(/\w/g, (c) => c.toUpperCase());
+  return `<span class="status-badge is-${escapeHtml(raw)}">${escapeHtml(label)}</span>`;
 }
 
 function escapeHtml(value) {

@@ -36,7 +36,6 @@ const tenantState = {
   setText("tenant-name", user.name);
   setText("tenant-company", user.company || user.email);
 
-  initServerStatusIndicator();
   wireMobileMenu();
   wireDashboardNav();
   wireLogout();
@@ -45,37 +44,6 @@ const tenantState = {
 
   await loadAllTenantData();
 })();
-
-function initServerStatusIndicator() {
-  const navRow = document.querySelector(".nav-row");
-  if (!(navRow instanceof HTMLElement)) {
-    return;
-  }
-  if (navRow.querySelector(".server-status-badge")) {
-    return;
-  }
-
-  const badge = document.createElement("span");
-  badge.className = "server-status-badge is-checking";
-  badge.textContent = "Server: checking";
-  navRow.appendChild(badge);
-
-  const setState = (state) => {
-    badge.classList.remove("is-checking", "is-online", "is-offline");
-    if (state === "online") {
-      badge.classList.add("is-online");
-      badge.textContent = "Server: online";
-      return;
-    }
-    badge.classList.add("is-offline");
-    badge.textContent = "Server: offline";
-  };
-
-  fetch("/api/health", { cache: "no-store" })
-    .then((res) => (res.ok ? res.json() : Promise.reject(new Error("offline"))))
-    .then(() => setState("online"))
-    .catch(() => setState("offline"));
-}
 
 function wireMobileMenu() {
   const nav = document.querySelector(".site-nav");
@@ -331,7 +299,7 @@ function renderReservationTables() {
     tr.innerHTML = `
       <td>${escapeHtml(row.property_title)}</td>
       <td>${escapeHtml(row.start_date)} → ${escapeHtml(row.end_date)}</td>
-      <td>${escapeHtml(row.status)}</td>
+      <td>${statusBadge(row.status)}</td>
       <td>${formatCurrency(row.total)}</td>
     `;
     upcomingBody.appendChild(tr);
@@ -348,7 +316,7 @@ function renderReservationTables() {
     tr.innerHTML = `
       <td>${escapeHtml(row.property_title)}</td>
       <td>${escapeHtml(row.start_date)} → ${escapeHtml(row.end_date)}</td>
-      <td>${escapeHtml(row.status)}</td>
+      <td>${statusBadge(row.status)}</td>
       <td>${formatCurrency(row.total)}</td>
     `;
     historyBody.appendChild(tr);
@@ -387,7 +355,7 @@ function renderFinanceTable() {
     tr.innerHTML = `
       <td>${escapeHtml((row.created_at || "").slice(0, 10))}</td>
       <td>${escapeHtml(row.property_title || "")}</td>
-      <td>${escapeHtml(row.status || "")}</td>
+      <td>${statusBadge(row.status)}</td>
       <td>${formatCurrency(row.total || 0)}</td>
       <td>${formatCurrency(row.platform_fee || 0)}</td>
     `;
@@ -500,6 +468,12 @@ function formatCurrency(value) {
     currency: "USD",
     minimumFractionDigits: 2,
   });
+}
+
+function statusBadge(status) {
+  const raw = String(status || "").toLowerCase().replace(/_/g, "-");
+  const label = String(status || "").replace(/_/g, " ").replace(/\w/g, (c) => c.toUpperCase());
+  return `<span class="status-badge is-${escapeHtml(raw)}">${escapeHtml(label)}</span>`;
 }
 
 function escapeHtml(value) {

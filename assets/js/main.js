@@ -37,8 +37,6 @@
     });
   }
 
-  initServerStatusIndicator();
-
   const openModal = (modalNode) => {
     if (!(modalNode instanceof HTMLElement)) {
       return;
@@ -498,46 +496,6 @@ function initFeaturedPropertyLinks() {
       }
     });
   });
-}
-
-function initServerStatusIndicator() {
-  const navRow = document.querySelector(".nav-row");
-  if (!(navRow instanceof HTMLElement)) {
-    return;
-  }
-  if (navRow.querySelector(".server-status-badge")) {
-    return;
-  }
-
-  const badge = document.createElement("span");
-  badge.className = "server-status-badge is-checking";
-  badge.textContent = "Server: checking";
-
-  navRow.appendChild(badge);
-
-  const setState = (state) => {
-    badge.classList.remove("is-checking", "is-online", "is-offline");
-    if (state === "online") {
-      badge.classList.add("is-online");
-      badge.textContent = "Server: online";
-      return;
-    }
-    if (state === "offline") {
-      badge.classList.add("is-offline");
-      badge.textContent = "Server: offline";
-      return;
-    }
-    badge.classList.add("is-checking");
-    badge.textContent = "Server: checking";
-  };
-
-  const abortController = new AbortController();
-  const timeout = setTimeout(() => abortController.abort(), 4500);
-  fetch("/api/health", { cache: "no-store", signal: abortController.signal })
-    .then((res) => (res.ok ? res.json() : Promise.reject(new Error("offline"))))
-    .then(() => setState("online"))
-    .catch(() => setState("offline"))
-    .finally(() => clearTimeout(timeout));
 }
 
 function setText(node, value) {
